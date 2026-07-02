@@ -1,20 +1,23 @@
 # 🌾⚡ 农产品 & 能源风险监控面板
 
-本地实时 Web 应用（Flask），四个板块：
+本地实时 Web 应用（Flask），五个板块：
 
-1. **🇺🇸 美国天气 & 炼厂风险** — 墨西哥湾 + 中西部(PADD2) 30 座炼厂（含真实州界地图，越热越红），
-   逐一叠加未来7天预报：高温风险（夏季冷却/降负荷）、雷暴洪水风险（强降水/大风）、寒潮积雪风险
-   （冬季冻管，参考2021年德州寒潮）；附各州 USDM 官方干旱统计；再叠加 Wood Mackenzie 炼厂情报
-   （开工率总览 + 装置停车/检修跟踪，命中天气高风险的停车装置会标注 ⚠️）。
-2. **🇪🇺 欧洲天气 & 炼厂风险** — 西北欧(ARA) + 地中海 26 座炼厂（真实国界地图），同样的三类风险叠加
-   + 干旱代理指标（欧洲无免key的官方干旱指数API）+ Wood Mackenzie 炼厂情报叠加。
+0. **📋 总览** — 分析师执行摘要，汇总下方每个板块的最新变化（首页第一个标签）。
+1. **🇺🇸 美国天气 & 炼厂风险** — 墨西哥湾 + 中西部(PADD2) 30 座炼厂（含真实州界地图，越热越红，
+   以及一张"风险+WoodMac停运"合并热力图，按综合严重度排序），逐一叠加未来7天预报：高温风险
+   （夏季冷却/降负荷）、雷暴洪水风险（强降水/大风）、寒潮积雪风险（冬季冻管，参考2021年德州寒潮）；
+   附各州 USDM 官方干旱统计；再叠加 Wood Mackenzie 炼厂情报（开工率总览图表 + 按炼厂分卡片的装置
+   停车/检修跟踪，命中天气高风险的会标注 ⚠️）。
+2. **🇪🇺 欧洲天气 & 炼厂风险** — 西北欧(ARA) + 地中海 26 座炼厂（真实国界地图 + 合并热力图），
+   同样的三类风险叠加 + 干旱代理指标（欧洲无免key的官方干旱指数API）+ Wood Mackenzie 炼厂情报叠加。
 3. **🌊 Kaub 水位** — 莱茵河 546km 处 Kaub 站：Pegelonline 实测水位(近30-45天) + 基于 GloFAS 水文
    模型流量、本地拟合换算的季节气候带图与约6个月展望，标注78cm枯水关口。
-4. **🌱 农产品分析师** — 玉米/大豆/小麦(SRW+HRW)/棉花/糖/可可/咖啡：期货价格与动量(yfinance) +
-   USDA《Crop Progress》周报优良率 + 主产区 USDM 干旱数据（软商品另加海外产区天气）
-   → 规则化多空判断与理由，每周自动同步 USDA 数据（也可手动强制刷新）。
+4. **🌱 农产品分析师** — 三个子模块：① USDA 周度《Crop Progress》客观数据可视化（生长进度+优良率）
+   ② 玉米/大豆/小麦(SRW+HRW)/棉花/糖/可可/咖啡的期货价格动量(yfinance) + 优良率 + 干旱数据交叉
+   验证 → 规则化多空判断 ③ USDA 月度 WASDE 供需平衡表（产量/库存/价格及其环比修正，月度数据，
+   与①②的周度/日度数据互补）。USDA 数据每周（Crop Progress）/月（WASDE）自动同步，也可手动强制刷新。
 
-页面右上角「导出 PDF」直接调用浏览器打印（已配打印样式，四个板块依次分页）。
+页面右上角「导出 PDF」直接调用浏览器打印（已配打印样式，各板块依次分页）。
 
 ## 运行
 
@@ -57,7 +60,8 @@ python app.py
 | Kaub 实测水位 | [Pegelonline (WSV)](https://www.pegelonline.wsv.de) | 官方实时数据，仅保留约30-45天 |
 | Kaub 展望/季节图 | Open-Meteo Flood API (GloFAS) | 莱茵河流量再分析+预报，约6个月展望；换算为水位为分析师近似 |
 | 农产品期货价格 | Yahoo Finance (`yfinance`) | 日线，5日/20日动量、均线偏离 |
-| USDA 作物状况 | [release.nass.usda.gov](https://release.nass.usda.gov) Crop Progress 周报 | 免key固定文件名文本报告，自动发现最新一期并解析 |
+| USDA 作物状况（周度） | [release.nass.usda.gov](https://release.nass.usda.gov) Crop Progress 周报 | 免key固定文件名文本报告，自动发现最新一期并解析 |
+| USDA 供需平衡表（月度） | [usda.library.cornell.edu](https://usda.library.cornell.edu/concern/publications/3t945q76s) WASDE 官方 xls 快照 | 免key，比PDF更可靠的结构化表格；每月约20天检查一次是否有新一期 |
 | 炼厂开工率/装置停车 | Wood Mackenzie《Refinery Intelligence Report》PDF | **非API** — 用户手动把周期性 PDF 快照放进本文件夹，文件名匹配 `wm_european_refinery_intelligence_report_*.pdf` / `wm_northamerican_refinery_intelligence_report*.pdf`，按文件名中的日期自动取最新一份解析 |
 
 ## 方法论说明 / 局限性
@@ -82,6 +86,14 @@ python app.py
   按「公司+地名」模糊匹配，未匹配上的停车装置仍会展示（标注"未匹配天气模型"），只是没有天气风险叠加，
   不代表该炼厂不存在或不重要。为提高匹配率，已把 WoodMac 报告中反复出现的炼厂（如 TotalEnergies Port
   Arthur、Citgo Corpus Christi、Lyondell Houston 等）补充进 `refineries.py`，坐标/产能同样是公开近似值。
+- **风险+停运热力图的"主装置占比"**：只用 CDU（常减压蒸馏，即炼厂的原油加工额定产能）停车容量去算
+  占标称产能的百分比；VDU/FCC/加氢裂化等下游装置有各自独立的产能评级，处理的是CDU产出的一部分，
+  跟标称产能不是同一口径，加总会虚高甚至超过100%，所以这些装置停车只在卡片/表格里如实标注容量，
+  不纳入这个百分比。
+- **WASDE 月度数据**：每份报告有4列——上一年度(已定案)、本年度(估计值，接近定案)、新年度(本月预测)、
+  新年度(上月预测)，页面里"环比"specifically指新年度预测这一项本月号相对上月号的修正，是市场最关注
+  的信号；不是年度同比。数据来自 USDA 官方 xls（比 PDF 更好解析），非 API，按 Cornell 归档页面自动
+  发现最新一期文件名（含版本号，如有修正版 `v2` 会自动取最新版本）。
 
 ## 文件结构
 - `app.py` — Flask 路由
@@ -91,6 +103,7 @@ python app.py
 - `agri.py` — 农产品分析师打分/理由生成
 - `kaub.py` — Kaub 水位季节图/展望构建（含拟合曲线）
 - `usda_sync.py` — USDA Crop Progress 周报抓取与解析（7天自动过期重新同步，缓存于 `cache/`）
+- `wasde_sync.py` — USDA WASDE 月度供需平衡表抓取与解析（xls，20天自动过期重新同步）
 - `wm_refinery_sync.py` — 解析 Wood Mackenzie 炼厂情报 PDF（pdfplumber 提取表格 + 双栏正文）
 - `wm_analysis.py` — WoodMac 停车装置 ↔ `refineries.py` 模糊匹配 + 天气风险叠加
 - `templates/dashboard.html` + `static/` — 前端（原生 JS + Chart.js + D3/TopoJSON CDN，真实州界/国界地图）
