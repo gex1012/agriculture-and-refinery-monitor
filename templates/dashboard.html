@@ -17,7 +17,7 @@
   </div>
   <div class="btnrow">
     <button class="act" id="refreshBtn">🔄 刷新数据</button>
-    <button class="act" id="syncUsdaBtn">📥 强制同步 USDA</button>
+    <button class="act" id="syncUsdaBtn">📥 强制同步 USDA+WASDE</button>
     <button class="act primary" onclick="window.print()">🖨️ 导出 PDF</button>
   </div>
 </header>
@@ -39,6 +39,7 @@
 
   <section class="page" id="page-us">
     <h2 style="margin:6px 0">美国 — 墨西哥湾 + 中西部炼厂天气风险</h2>
+    <div class="heatmap-wrap" id="us-heatmap"></div>
     <div class="chart-wrap">
       <div id="us-map" class="tempmap"></div>
       <div class="maplegend" id="us-map-legend"></div>
@@ -76,6 +77,7 @@
 
   <section class="page" id="page-eu">
     <h2 style="margin:6px 0">欧洲 — 西北欧(ARA) + 地中海炼厂天气风险</h2>
+    <div class="heatmap-wrap" id="eu-heatmap"></div>
     <div class="chart-wrap">
       <div id="eu-map" class="tempmap"></div>
       <div class="maplegend" id="eu-map-legend"></div>
@@ -134,6 +136,11 @@
     <div class="analyst" id="agri-summary"></div>
     <div class="cards" id="agri-cards"></div>
     <div class="note" id="agri-note"></div>
+
+    <div class="section-title">子模块三 · WASDE 月度供需平衡表（USDA，与上方周度数据互补）</div>
+    <div class="analyst" id="wasde-analyst"></div>
+    <div class="cards" id="wasde-cards"></div>
+    <div class="note" id="wasde-note"></div>
   </section>
 
   <footer>

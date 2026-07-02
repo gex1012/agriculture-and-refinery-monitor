@@ -6,7 +6,7 @@ const fmtKbd = (bpd) => (bpd === null || bpd === undefined || isNaN(bpd)) ? '—
 
 // Populated as each module loads; read by renderSummary() at the end so the homepage tab can
 // compose a cross-module executive briefing without re-fetching anything.
-const STATE = {usRisk: null, euRisk: null, usWm: null, euWm: null, kaub: null, agri: null};
+const STATE = {usRisk: null, euRisk: null, usWm: null, euWm: null, kaub: null, agri: null, wasde: null};
 
 function goToTab(page) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.page === page));
@@ -246,6 +246,67 @@ async function loadRefineryPanel(market) {
       }</span></td>
     </tr>`).join('');
   }
+}
+
+function riskCellClass(level) {
+  return {high: 'hm-high', moderate: 'hm-moderate', low: 'hm-low'}[level] || 'hm-none';
+}
+function riskCellLabel(level) {
+  return {high: '高', moderate: '中', low: '低'}[level] || '—';
+}
+
+function renderRiskHeatmap(containerId, riskData, wmData) {
+  const container = document.getElementById(containerId);
+  if (!riskData) { container.innerHTML = ''; return; }
+  const refs = riskData.refineries || [];
+
+  // CDU (crude distillation) capacity is directly comparable to a refinery's nameplate rating;
+  // downstream units (VDU/FCC/hydrotreaters) have their own separate ratings for a fraction of the
+  // CDU's output, so summing every OFF unit against nameplate would double-count past 100%.
+  const outageByRefinery = {};
+  if (wmData && wmData.facility_cards) {
+    wmData.facility_cards.forEach(c => {
+      if (c.matched_refinery) {
+        const prev = outageByRefinery[c.matched_refinery] || {total: 0, cdu: 0};
+        outageByRefinery[c.matched_refinery] = {
+          total: prev.total + (c.total_capacity_off || 0),
+          cdu: prev.cdu + (c.cdu_capacity_off || 0),
+        };
+      }
+    });
+  }
+
+  const scored = refs.map(r => {
+    const outage = outageByRefinery[r.name] || {total: 0, cdu: 0};
+    const cduPct = r.capacity_kbd && outage.cdu ? (outage.cdu / 1000) / r.capacity_kbd * 100 : 0;
+    const sevMap = {high: 2, moderate: 1, low: 0};
+    const severityScore = (sevMap[r.risk.heat_risk] || 0) + (sevMap[r.risk.storm_flood_risk] || 0) +
+      (sevMap[r.risk.freeze_snow_risk] || 0) + (outage.total > 0 ? 2 : 0);
+    return {r, outage, cduPct, severityScore};
+  }).sort((a, b) => b.severityScore - a.severityScore);
+
+  const outageCellClass = (o, pct) => pct >= 30 ? 'hm-severe' : ((pct > 0 || o.total > 0) ? 'hm-partial' : 'hm-none');
+  const outageCellLabel = (o, pct) => {
+    if (o.cdu > 0) return `${fmtKbd(o.total)}千桶/日 (主装置${pct >= 100 ? '≥100' : pct.toFixed(0)}%)`;
+    if (o.total > 0) return `${fmtKbd(o.total)}千桶/日（非主装置）`;
+    return '—';
+  };
+
+  const bodyRows = scored.map(({r, outage, cduPct}) => `<tr>
+    <td class="hm-name">${esc(r.name)}</td>
+    <td class="hm-cap">${fmt0(r.capacity_kbd)}千桶/日</td>
+    <td class="${riskCellClass(r.risk.heat_risk)}">${riskCellLabel(r.risk.heat_risk)}</td>
+    <td class="${riskCellClass(r.risk.storm_flood_risk)}">${riskCellLabel(r.risk.storm_flood_risk)}</td>
+    <td class="${riskCellClass(r.risk.freeze_snow_risk)}">${riskCellLabel(r.risk.freeze_snow_risk)}</td>
+    <td class="${outageCellClass(outage, cduPct)}">${outageCellLabel(outage, cduPct)}</td>
+  </tr>`).join('');
+
+  container.innerHTML = `
+    <h4>炼厂风险 + WoodMac 停运热力图（按综合严重度排序，越红越需要关注）</h4>
+    <table class="heatmap-table">
+      <thead><tr><th>炼厂</th><th>产能</th><th>高温</th><th>雷暴/洪水</th><th>寒潮/积雪</th><th>停运产能（主装置占比）</th></tr></thead>
+      <tbody>${bodyRows}</tbody>
+    </table>`;
 }
 
 function weatherFlagHtml(risk) {
@@ -520,6 +581,59 @@ async function loadAgri() {
     '数据来源：期货价格 — Yahoo Finance（yfinance，免费）；作物生长/优良率 — USDA NASS《Crop Progress》周报（release.nass.usda.gov，免 key 公开文本报告，每周自动同步一次）；干旱 — U.S. Drought Monitor 官方 API；软商品海外产区天气 — Open-Meteo。以上多空判断为规则化分析框架输出，仅供研究参考，不构成投资建议。';
 }
 
+const WASDE_NAMES = {corn: '玉米 Corn', soybean: '大豆 Soybean', wheat: '小麦 Wheat', cotton: '棉花 Cotton', sugar: '糖 Sugar'};
+const WASDE_ROW_ORDER = ['production', 'ending stocks', 'avg. farm price', 'avg. price', 'stocks to use ratio'];
+
+async function loadWasde() {
+  const res = await fetch('/api/wasde');
+  const d = await res.json();
+  STATE.wasde = d;
+  if (d.error) {
+    document.getElementById('wasde-analyst').innerHTML = `<span class="muted">${esc(d.error)}</span>`;
+    document.getElementById('wasde-cards').innerHTML = '';
+    return;
+  }
+
+  const commodities = Object.entries(d.commodities || {});
+  let biggest = null;
+  commodities.forEach(([key, table]) => {
+    if (table.error) return;
+    ['production', 'ending stocks'].forEach(metric => {
+      const m = table.metrics && table.metrics[metric];
+      if (m && m.proj_prev_month != null && m.proj_latest != null && m.proj_prev_month !== 0) {
+        const pctChg = (m.proj_latest - m.proj_prev_month) / Math.abs(m.proj_prev_month) * 100;
+        if (!biggest || Math.abs(pctChg) > Math.abs(biggest.pctChg)) {
+          biggest = {key, metric, pctChg, prev: m.proj_prev_month, latest: m.proj_latest};
+        }
+      }
+    });
+  });
+
+  document.getElementById('wasde-analyst').innerHTML = `<h3>WASDE 数据解读（${d.release_month}月号，源文件 ${esc(d.source_file)}）</h3>
+    <ul>
+      <li>WASDE 是 USDA 每月发布的供需平衡表（产量/库存/出口/期末库存预测），本月号相对上月号对2026/27年度的修正是市场最关注的信号，下方每张卡片括号内的"环比"就是这个修正幅度。</li>
+      ${biggest ? `<li>本月修正幅度最大：<b>${esc(WASDE_NAMES[biggest.key] || biggest.key)}</b>的${biggest.metric === 'production' ? '产量' : '期末库存'}从 ${fmt1(biggest.prev)} 修正为 <b>${fmt1(biggest.latest)}</b>（${biggest.pctChg >= 0 ? '+' : ''}${fmt1(biggest.pctChg)}%）。</li>` : ''}
+    </ul>`;
+
+  document.getElementById('wasde-cards').innerHTML = commodities.map(([key, table]) => {
+    if (table.error) return `<div class="wasde-card"><h4>${esc(WASDE_NAMES[key] || key)}</h4><span class="muted">解析失败</span></div>`;
+    const rowsHtml = WASDE_ROW_ORDER.map(metric => {
+      const m = table.metrics && table.metrics[metric];
+      if (!m) return '';
+      const delta = (m.proj_latest != null && m.proj_prev_month != null) ? m.proj_latest - m.proj_prev_month : null;
+      const deltaClass = delta > 0 ? 'pos' : (delta < 0 ? 'neg' : '');
+      return `<div class="wasde-row">
+        <span class="wl">${esc(m.label)}</span>
+        <span><span class="wv">${fmt1(m.proj_latest)}</span>${delta != null && Math.abs(delta) > 0.001 ? `<span class="wd ${deltaClass}">（环比${delta >= 0 ? '+' : ''}${fmt1(delta)}）</span>` : ''}</span>
+      </div>`;
+    }).join('');
+    return `<div class="wasde-card"><h4>${esc(WASDE_NAMES[key] || key)}</h4>${rowsHtml}</div>`;
+  }).join('');
+
+  document.getElementById('wasde-note').innerText =
+    'WASDE（世界农产品供需预测）数据来源：USDA/Cornell 官方 xls 快照（免费，无需 key），每月约8-12日发布一次，与上方每周更新的 Crop Progress 数据互补。产量/库存单位：玉米大豆小麦=百万蒲式耳，棉花=百万包(480磅/包)，糖=千短吨；价格单位见各行标签。点击"强制同步 USDA"会同时刷新周度数据和本模块。';
+}
+
 function weatherBlockHtml(marketLabel, tabKey, riskData, wmData) {
   if (!riskData) return '';
   const refs = riskData.refineries || [];
@@ -663,7 +777,10 @@ async function loadAll() {
     loadWmModule('EU'),
     loadKaub(),
     loadAgri(),
+    loadWasde(),
   ]);
+  renderRiskHeatmap('us-heatmap', STATE.usRisk, STATE.usWm);
+  renderRiskHeatmap('eu-heatmap', STATE.euRisk, STATE.euWm);
   renderSummary();
 }
 
@@ -674,9 +791,9 @@ document.getElementById('refreshBtn').addEventListener('click', () => {
 document.getElementById('syncUsdaBtn').addEventListener('click', async () => {
   document.getElementById('syncUsdaBtn').innerText = '⏳ 同步中…';
   await fetch('/api/agri/sync', {method: 'POST'});
-  await loadAgri();
+  await Promise.allSettled([loadAgri(), loadWasde()]);
   renderSummary();
-  document.getElementById('syncUsdaBtn').innerText = '📥 强制同步 USDA';
+  document.getElementById('syncUsdaBtn').innerText = '📥 强制同步 USDA+WASDE';
 });
 
 ['us', 'eu'].forEach(prefix => {

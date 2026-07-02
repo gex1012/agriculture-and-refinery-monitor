@@ -53,12 +53,19 @@ def build_facility_cards(subregions, market_refineries, weather_risk_by_refinery
             risk = weather_risk_by_refinery.get(matched["name"]) if matched else None
             units_sorted = sorted(units, key=lambda u: -(u["capacity_bpd"] or 0))
             days_list = [u["days_since"] for u in units if u["days_since"] is not None]
+            # CDU (crude distillation) capacity is the refinery's nameplate crude-throughput rating;
+            # downstream units (VDU/FCC/hydrotreaters) have their own separate capacity ratings that
+            # process a *fraction* of the CDU's output, so summing every OFF unit's capacity against
+            # nameplate would double count and can exceed 100%. Only CDU outages are nameplate-comparable.
+            cdu_capacity_off = sum(u["capacity_bpd"] or 0 for u in units
+                                    if u["status"] == "OFF" and u["unit_name"].upper().startswith("CDU"))
             cards.append({
                 "facility": facility, "subregion": sr["name"],
                 "matched_refinery": matched["name"] if matched else None,
                 "weather_risk": risk, "weather_flagged": _is_flagged(risk),
                 "units": units_sorted,
                 "total_capacity_off": sum(u["capacity_bpd"] or 0 for u in units if u["status"] == "OFF"),
+                "cdu_capacity_off": cdu_capacity_off,
                 "most_recent_days": min(days_list) if days_list else None,
             })
 

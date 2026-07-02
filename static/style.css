@@ -116,6 +116,29 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 .summary-hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:16px}
 .summary-hero .stat{text-align:center}
 .summary-flag{color:var(--red);font-weight:700}
+
+.heatmap-wrap{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin:14px 0;overflow-x:auto}
+.heatmap-wrap h4{margin:0 0 10px;font-size:13px;color:var(--muted);font-weight:600}
+table.heatmap-table{width:100%;border-collapse:separate;border-spacing:3px;font-size:12px}
+table.heatmap-table th{color:var(--muted);font-weight:600;font-size:10.5px;text-transform:uppercase;padding:4px 8px;text-align:center}
+table.heatmap-table th:first-child{text-align:left}
+table.heatmap-table td{padding:6px 8px;text-align:center;border-radius:4px;white-space:nowrap}
+table.heatmap-table td.hm-name{text-align:left;background:transparent;color:var(--fg);padding-left:2px;font-size:12px}
+table.heatmap-table td.hm-cap{text-align:right;background:transparent;color:var(--muted);padding-right:10px}
+.hm-low{background:rgba(63,185,80,.22);color:var(--green)}
+.hm-moderate{background:rgba(210,153,34,.35);color:#ffce5c}
+.hm-high{background:rgba(248,81,73,.55);color:#fff;font-weight:700}
+.hm-none{background:rgba(139,148,158,.08);color:var(--muted)}
+.hm-partial{background:rgba(210,153,34,.3);color:#ffce5c;font-weight:600}
+.hm-severe{background:rgba(248,81,73,.5);color:#fff;font-weight:700}
+
+.wasde-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.wasde-card h4{margin:0 0 8px;font-size:14.5px}
+.wasde-row{display:flex;justify-content:space-between;align-items:baseline;padding:5px 0;border-top:1px dashed var(--border);font-size:12.5px}
+.wasde-row:first-of-type{border-top:none}
+.wasde-row .wl{color:var(--muted)}
+.wasde-row .wv{font-weight:600}
+.wasde-row .wd{font-size:11px;margin-left:6px}
 .kpi-row{display:flex;gap:24px;flex-wrap:wrap;margin-bottom:10px}
 .kpi{min-width:140px}
 .kpi .n{font-size:26px;font-weight:700}

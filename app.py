@@ -10,6 +10,7 @@ import analysis
 import kaub
 import refineries
 import usda_sync
+import wasde_sync
 import wm_analysis
 import wm_refinery_sync
 
@@ -113,7 +114,14 @@ def api_agri():
 
 @app.route("/api/agri/sync", methods=["POST"])
 def api_agri_sync():
-    return jsonify(usda_sync.sync(force=True))
+    usda = usda_sync.sync(force=True)
+    wasde = wasde_sync.sync(force=True)
+    return jsonify({"usda": usda, "wasde": wasde})
+
+
+@app.route("/api/wasde")
+def api_wasde():
+    return jsonify(wasde_sync.sync())
 
 
 @app.route("/api/wm_refinery/upload", methods=["POST"])
