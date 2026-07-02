@@ -1,0 +1,8 @@
+flask
+requests
+numpy
+pandas
+yfinance
+pdfplumber
+python-dateutil
+gunicorn

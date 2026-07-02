@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>农产品 & 能源风险监控面板</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🌾⚡ 农产品 &amp; 能源风险监控面板</h1>
+    <div class="sub">美国/欧洲炼厂天气风险 · 干旱监测 · Kaub 莱茵河水位 · 农产品分析师视角 — 数据来源见各板块页脚</div>
+  </div>
+  <div class="btnrow">
+    <button class="act" id="refreshBtn">🔄 刷新数据</button>
+    <button class="act" id="syncUsdaBtn">📥 强制同步 USDA</button>
+    <button class="act primary" onclick="window.print()">🖨️ 导出 PDF</button>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" data-page="summary">📋 总览</button>
+    <button class="tab" data-page="us">🇺🇸 美国天气 &amp; 炼厂风险</button>
+    <button class="tab" data-page="eu">🇪🇺 欧洲天气 &amp; 炼厂风险</button>
+    <button class="tab" data-page="kaub">🌊 Kaub 水位</button>
+    <button class="tab" data-page="agri">🌱 农产品分析师</button>
+  </div>
+
+  <section class="page active" id="page-summary">
+    <h2 style="margin:6px 0">📋 分析师执行摘要</h2>
+    <div class="sub" id="summary-generated" style="margin-bottom:10px"></div>
+    <div id="summary-content"></div>
+  </section>
+
+  <section class="page" id="page-us">
+    <h2 style="margin:6px 0">美国 — 墨西哥湾 + 中西部炼厂天气风险</h2>
+    <div class="chart-wrap">
+      <div id="us-map" class="tempmap"></div>
+      <div class="maplegend" id="us-map-legend"></div>
+    </div>
+    <div class="grid" id="us-stats"></div>
+    <div class="analyst" id="us-analyst"></div>
+    <div class="section-title">炼厂逐一风险</div>
+    <table id="us-refinery-table"><thead><tr>
+      <th>炼厂</th><th>地区</th><th>州</th><th class="num">产能(千桶/日)</th>
+      <th class="num">当前温度</th><th class="num">未来7日最高温</th>
+      <th>高温风险</th><th>雷暴/洪水风险</th><th>寒潮/积雪风险</th>
+    </tr></thead><tbody></tbody></table>
+    <div class="section-title">干旱监测（USDM，按州）</div>
+    <table id="us-drought-table"><thead><tr>
+      <th>州</th><th>数据截至</th><th class="num">正常</th><th class="num">异常干燥(D0)</th>
+      <th class="num">中度(D1)</th><th class="num">严重以上(D2+)</th><th class="num">极端以上(D3+)</th>
+      <th>4周趋势</th>
+    </tr></thead><tbody></tbody></table>
+    <div class="note">数据来源：气温/降水/大风预报 — Open-Meteo（免费，无需 key）；干旱 — 美国干旱监测 U.S. Drought Monitor 官方 Data Service（usdmdataservices.unl.edu）。风险阈值：高温 ≥38°C 记为高风险、35–38°C 为中风险；雷暴/洪水按单日降水≥50mm 或阵风≥90km/h 记高风险；墨西哥湾沿岸炼厂因未按严寒设计，最低温≤0°C 即记寒潮风险，中西部炼厂阈值为 ≤-25°C 或降雪≥15cm（参考2021年德州寒潮导致约500万桶/日产能停产的先例）。</div>
+
+    <div class="section-title">子模块三 · 炼厂开工率总览（Wood Mackenzie）</div>
+    <div class="analyst" id="us-wm-analyst"></div>
+    <div class="chart-wrap"><canvas id="us-wm-util-chart" height="90"></canvas></div>
+
+    <div class="section-title">子模块四 · 装置动态与检修跟踪（Wood Mackenzie，⚠️=当前也命中天气高风险）</div>
+    <div class="btnrow" style="margin-bottom:10px">
+      <label class="act" style="cursor:pointer">📤 上传新一期报告
+        <input type="file" accept=".pdf" id="us-wm-upload" style="display:none">
+      </label>
+      <span class="muted" id="us-wm-upload-status" style="font-size:12px;align-self:center"></span>
+    </div>
+    <div id="us-wm-cards" class="cards"></div>
+    <div class="note" id="us-wm-note">数据来源：Wood Mackenzie《Refinery Intelligence Report》（用户提供的 PDF 快照，基于红外成像/功耗监测的装置级数据），非实时 API — 本机运行可直接把新一期 PDF 放入 agri_energy_monitor 文件夹后点击"刷新数据"；云端部署请用上方"上传新一期报告"按钮。⚠️ 标记表示该炼厂同时命中本页天气风险模型的高风险项。</div>
+  </section>
+
+  <section class="page" id="page-eu">
+    <h2 style="margin:6px 0">欧洲 — 西北欧(ARA) + 地中海炼厂天气风险</h2>
+    <div class="chart-wrap">
+      <div id="eu-map" class="tempmap"></div>
+      <div class="maplegend" id="eu-map-legend"></div>
+    </div>
+    <div class="grid" id="eu-stats"></div>
+    <div class="analyst" id="eu-analyst"></div>
+    <div class="section-title">炼厂逐一风险</div>
+    <table id="eu-refinery-table"><thead><tr>
+      <th>炼厂</th><th>地区</th><th>国家</th><th class="num">产能(千桶/日)</th>
+      <th class="num">当前温度</th><th class="num">未来7日最高温</th>
+      <th>高温风险</th><th>雷暴/洪水风险</th><th>寒潮/积雪风险</th>
+    </tr></thead><tbody></tbody></table>
+    <div class="section-title">干旱监测（降水偏离度代理指标）</div>
+    <table id="eu-drought-table"><thead><tr>
+      <th>区域</th><th class="num">近90日降水(mm)</th><th class="num">历史同期均值(mm)</th>
+      <th class="num">偏离度</th><th>状态</th>
+    </tr></thead><tbody></tbody></table>
+    <div class="note">数据来源：Open-Meteo 预报 + 历史归档 API（免费，无需 key）。欧洲没有等同美国 USDM 的免 key 官方干旱指数接口（欧洲干旱观测台 EDO 需 Copernicus 账号），此处用近90天降水总量对比近15年同期历史均值的偏离度作为分析师代理指标：偏离 ≤-40% 记严重缺水、≤-20% 记中度缺水，仅供参考，非官方干旱等级。地中海炼厂因气候温暖，寒潮阈值与墨西哥湾一致（≤0°C）；西北欧炼厂阈值同中西部（≤-25°C 或降雪≥15cm）。</div>
+
+    <div class="section-title">子模块三 · 炼厂开工率总览（Wood Mackenzie）</div>
+    <div class="analyst" id="eu-wm-analyst"></div>
+    <div class="chart-wrap"><canvas id="eu-wm-util-chart" height="90"></canvas></div>
+
+    <div class="section-title">子模块四 · 装置动态与检修跟踪（Wood Mackenzie，⚠️=当前也命中天气高风险）</div>
+    <div class="btnrow" style="margin-bottom:10px">
+      <label class="act" style="cursor:pointer">📤 上传新一期报告
+        <input type="file" accept=".pdf" id="eu-wm-upload" style="display:none">
+      </label>
+      <span class="muted" id="eu-wm-upload-status" style="font-size:12px;align-self:center"></span>
+    </div>
+    <div id="eu-wm-cards" class="cards"></div>
+    <div class="note" id="eu-wm-note">数据来源：Wood Mackenzie《Refinery Intelligence Report》（用户提供的 PDF 快照，基于红外成像/功耗监测的装置级数据），非实时 API — 本机运行可直接把新一期 PDF 放入 agri_energy_monitor 文件夹后点击"刷新数据"；云端部署请用上方"上传新一期报告"按钮。⚠️ 标记表示该炼厂同时命中本页天气风险模型的高风险项。</div>
+  </section>
+
+  <section class="page" id="page-kaub">
+    <h2 style="margin:6px 0">🌊 Kaub 水位（莱茵河 546km）季节图与展望</h2>
+    <div class="kpi-row" id="kaub-kpis"></div>
+    <div class="chart-wrap"><canvas id="kaubChart" height="90"></canvas></div>
+    <div class="analyst" id="kaub-analyst"></div>
+    <div class="note">实际水位（近30-45天）：德国联邦水道局 Pegelonline 实时数据（官方，免 key）。季节气候带 + 未来展望（约6个月）：Open-Meteo Flood API（基于 GloFAS 水文模型再分析/预报），取 Kaub 附近莱茵河主河道格点的流量(m³/s)，再用近45天实测水位与流量的本地拟合曲线（幂函数, R² 见页面）换算为水位估算值 — 这是分析师近似换算，不是 WSV 官方水位表，仅用于判断趋势方向与关口（78cm 低水位阈值）。</div>
+  </section>
+
+  <section class="page" id="page-agri">
+    <h2 style="margin:6px 0">🌱 农产品分析师视角</h2>
+
+    <div class="section-title">子模块一 · USDA 客观数据可视化（作物生长进度 &amp; 当前优良率）</div>
+    <div class="analyst" id="usda-viz-analyst"></div>
+    <div class="chart-wrap">
+      <h4 style="margin:0 0 10px;font-size:13px;color:var(--muted)">作物状况分布 — Very Poor → Excellent（占比%）</h4>
+      <canvas id="conditionChart" height="130"></canvas>
+    </div>
+    <div class="section-title">各作物生长阶段进度（本年度 vs 近5年同期均值）</div>
+    <div class="cards" id="progress-cards"></div>
+
+    <div class="section-title">子模块二 · 交易建议（规则化分析框架）</div>
+    <div class="analyst" id="agri-summary"></div>
+    <div class="cards" id="agri-cards"></div>
+    <div class="note" id="agri-note"></div>
+  </section>
+
+  <footer>
+    本面板所有分析（风险等级、干旱状态、农产品多空判断）均为基于公开数据的规则化分析框架输出，用于研究/监控参考，不构成投资建议。生成时间见各板块。
+  </footer>
+</div>
+
+<script src="/static/dashboard.js"></script>
+</body>
+</html>
