@@ -6,3 +6,4 @@ yfinance
 pdfplumber
 python-dateutil
 gunicorn
+xlrd

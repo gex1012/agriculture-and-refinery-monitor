@@ -248,11 +248,24 @@ async function loadRefineryPanel(market) {
   }
 }
 
-function riskCellClass(level) {
-  return {high: 'hm-high', moderate: 'hm-moderate', low: 'hm-low'}[level] || 'hm-none';
+const RISK_LABEL = {high: '高温高风险', moderate: '高温中等风险'};
+const STORM_LABEL = {high: '雷暴/洪水高风险', moderate: '雷暴/洪水中等风险'};
+const FREEZE_LABEL = {high: '寒潮/积雪高风险', moderate: '寒潮/积雪中等风险'};
+
+// 1-10 shutdown-risk score: weather forecast risk (0-9, 3pts per high category / 1pt per moderate)
+// blended with current WoodMac outage severity (0-5, scaled by % of nameplate CDU capacity down;
+// a flat 1.5 if only non-primary units are down), capped at 10.
+function computeSeverityScore(r, outage, cduPct) {
+  const wp = {high: 3, moderate: 1, low: 0};
+  const weatherPts = (wp[r.risk.heat_risk] || 0) + (wp[r.risk.storm_flood_risk] || 0) + (wp[r.risk.freeze_snow_risk] || 0);
+  let outagePts = 0;
+  if (outage.cdu > 0) outagePts = Math.min(cduPct, 100) / 100 * 5;
+  else if (outage.total > 0) outagePts = 1.5;
+  return Math.min(weatherPts + outagePts, 10);
 }
-function riskCellLabel(level) {
-  return {high: '高', moderate: '中', low: '低'}[level] || '—';
+
+function severityBadgeClass(score) {
+  return score >= 7 ? 'hm-high' : (score >= 4 ? 'hm-moderate' : 'hm-low');
 }
 
 function renderRiskHeatmap(containerId, riskData, wmData) {
@@ -279,32 +292,34 @@ function renderRiskHeatmap(containerId, riskData, wmData) {
   const scored = refs.map(r => {
     const outage = outageByRefinery[r.name] || {total: 0, cdu: 0};
     const cduPct = r.capacity_kbd && outage.cdu ? (outage.cdu / 1000) / r.capacity_kbd * 100 : 0;
-    const sevMap = {high: 2, moderate: 1, low: 0};
-    const severityScore = (sevMap[r.risk.heat_risk] || 0) + (sevMap[r.risk.storm_flood_risk] || 0) +
-      (sevMap[r.risk.freeze_snow_risk] || 0) + (outage.total > 0 ? 2 : 0);
-    return {r, outage, cduPct, severityScore};
-  }).sort((a, b) => b.severityScore - a.severityScore);
+    const score = computeSeverityScore(r, outage, cduPct);
+    const reasons = [];
+    if (RISK_LABEL[r.risk.heat_risk]) reasons.push(RISK_LABEL[r.risk.heat_risk]);
+    if (STORM_LABEL[r.risk.storm_flood_risk]) reasons.push(STORM_LABEL[r.risk.storm_flood_risk]);
+    if (FREEZE_LABEL[r.risk.freeze_snow_risk]) reasons.push(FREEZE_LABEL[r.risk.freeze_snow_risk]);
+    if (outage.cdu > 0) reasons.push(`主装置停车${fmtKbd(outage.cdu)}千桶/日 (${cduPct >= 100 ? '≥100' : cduPct.toFixed(0)}%)`);
+    else if (outage.total > 0) reasons.push(`非主装置停车${fmtKbd(outage.total)}千桶/日`);
+    return {r, score, reasons};
+  })
+    .filter(x => x.score >= 2)
+    .sort((a, b) => b.score - a.score);
 
-  const outageCellClass = (o, pct) => pct >= 30 ? 'hm-severe' : ((pct > 0 || o.total > 0) ? 'hm-partial' : 'hm-none');
-  const outageCellLabel = (o, pct) => {
-    if (o.cdu > 0) return `${fmtKbd(o.total)}千桶/日 (主装置${pct >= 100 ? '≥100' : pct.toFixed(0)}%)`;
-    if (o.total > 0) return `${fmtKbd(o.total)}千桶/日（非主装置）`;
-    return '—';
-  };
+  if (!scored.length) {
+    container.innerHTML = `<h4>炼厂关停风险评分（1-10分，越高越严重）</h4><div class="muted" style="padding:8px 0">未来7天及当前 WoodMac 停运数据中，暂无需要重点关注的炼厂。</div>`;
+    return;
+  }
 
-  const bodyRows = scored.map(({r, outage, cduPct}) => `<tr>
+  const bodyRows = scored.map(({r, score, reasons}) => `<tr>
     <td class="hm-name">${esc(r.name)}</td>
     <td class="hm-cap">${fmt0(r.capacity_kbd)}千桶/日</td>
-    <td class="${riskCellClass(r.risk.heat_risk)}">${riskCellLabel(r.risk.heat_risk)}</td>
-    <td class="${riskCellClass(r.risk.storm_flood_risk)}">${riskCellLabel(r.risk.storm_flood_risk)}</td>
-    <td class="${riskCellClass(r.risk.freeze_snow_risk)}">${riskCellLabel(r.risk.freeze_snow_risk)}</td>
-    <td class="${outageCellClass(outage, cduPct)}">${outageCellLabel(outage, cduPct)}</td>
+    <td class="${severityBadgeClass(score)}" style="font-weight:700">${score.toFixed(1)}</td>
+    <td class="hm-name" style="text-align:left">${reasons.join('、')}</td>
   </tr>`).join('');
 
   container.innerHTML = `
-    <h4>炼厂风险 + WoodMac 停运热力图（按综合严重度排序，越红越需要关注）</h4>
+    <h4>炼厂关停风险评分（1-10分，越高越严重，只列出有明显风险信号的炼厂）</h4>
     <table class="heatmap-table">
-      <thead><tr><th>炼厂</th><th>产能</th><th>高温</th><th>雷暴/洪水</th><th>寒潮/积雪</th><th>停运产能（主装置占比）</th></tr></thead>
+      <thead><tr><th>炼厂</th><th>产能</th><th>风险评分</th><th>具体风险</th></tr></thead>
       <tbody>${bodyRows}</tbody>
     </table>`;
 }

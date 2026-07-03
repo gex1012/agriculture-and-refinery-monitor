@@ -17,6 +17,8 @@ import re
 import pdfplumber
 from dateutil import parser as dateparser
 
+import github_persist
+
 BASE_DIR = os.path.dirname(__file__)
 CACHE_DIR = os.path.join(BASE_DIR, "cache")
 
@@ -202,12 +204,30 @@ def sync(market, force=False):
             return cached
 
     if not pdf_path:
+        # No PDF on local disk — normal after a fresh restart on ephemeral hosting (Render free
+        # tier resets the filesystem on every sleep/wake). Fall back to the last successfully
+        # parsed result backed up to GitHub, if any, before giving up.
+        if os.path.exists(cache_file):
+            with open(cache_file, encoding="utf-8") as f:
+                return json.load(f)
+        remote = github_persist.pull_json(f"wm_{market.lower()}.json")
+        if remote:
+            data = json.loads(remote)
+            os.makedirs(CACHE_DIR, exist_ok=True)
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            return data
         return {"error": f"no Wood Mackenzie {market} PDF found in {BASE_DIR}"}
 
     result = parse_report(pdf_path)
     os.makedirs(CACHE_DIR, exist_ok=True)
     with open(cache_file, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
+    github_persist.push_json(
+        f"wm_{market.lower()}.json",
+        json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8"),
+        f"Update WM {market} data: {result.get('report_date')}",
+    )
     return result
 
 
