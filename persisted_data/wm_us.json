@@ -1,19 +1,19 @@
 {
-  "report_date": "2026-07-02",
-  "source_file": "wm_northamerican_refinery_intelligence_report_AM_20260702.pdf",
-  "synced_at": "2026-07-03T03:13:34",
+  "report_date": "2026-07-07",
+  "source_file": "wm_northamerican_refinery_intelligence_report_AM_202607071.pdf",
+  "synced_at": "2026-07-08T03:45:10",
   "utilization": [
     {
       "region": "Cushing-Connected",
       "primary": {
         "util_pct": 100.0,
         "bpd_offline": 0.0,
-        "wow_chg_pct": 1.1
+        "wow_chg_pct": null
       },
       "light": {
         "util_pct": 100.0,
         "bpd_offline": 0.0,
-        "wow_chg_pct": 0.7
+        "wow_chg_pct": null
       },
       "middle": {
         "util_pct": 100.0,
@@ -23,7 +23,7 @@
       "heavy": {
         "util_pct": 92.2,
         "bpd_offline": 24500.0,
-        "wow_chg_pct": -0.9
+        "wow_chg_pct": -1.6
       }
     },
     {
@@ -31,17 +31,17 @@
       "primary": {
         "util_pct": 98.3,
         "bpd_offline": 26000.0,
-        "wow_chg_pct": 8.3
+        "wow_chg_pct": 7.1
       },
       "light": {
         "util_pct": 84.0,
         "bpd_offline": 108000.0,
-        "wow_chg_pct": 3.7
+        "wow_chg_pct": 3.2
       },
       "middle": {
-        "util_pct": 100.0,
-        "bpd_offline": 0.0,
-        "wow_chg_pct": 17.5
+        "util_pct": 80.5,
+        "bpd_offline": 23000.0,
+        "wow_chg_pct": 10.8
       },
       "heavy": {
         "util_pct": 64.9,
@@ -52,47 +52,47 @@
     {
       "region": "Mid-Continent",
       "primary": {
-        "util_pct": 100.0,
-        "bpd_offline": 0.0,
-        "wow_chg_pct": 0.1
+        "util_pct": 96.4,
+        "bpd_offline": 202000.0,
+        "wow_chg_pct": -2.4
       },
       "light": {
-        "util_pct": 97.1,
-        "bpd_offline": 77000.0,
-        "wow_chg_pct": -1.3
+        "util_pct": 95.7,
+        "bpd_offline": 114500.0,
+        "wow_chg_pct": 0.1
       },
       "middle": {
-        "util_pct": 100.0,
-        "bpd_offline": 0.0,
-        "wow_chg_pct": -1.5
+        "util_pct": 99.1,
+        "bpd_offline": 7000.0,
+        "wow_chg_pct": 0.6
       },
       "heavy": {
-        "util_pct": 95.5,
-        "bpd_offline": 24500.0,
-        "wow_chg_pct": -0.5
+        "util_pct": 88.2,
+        "bpd_offline": 64500.0,
+        "wow_chg_pct": -5.8
       }
     },
     {
       "region": "Gulf Coast",
       "primary": {
-        "util_pct": 92.0,
-        "bpd_offline": 959400.0,
-        "wow_chg_pct": 0.5
+        "util_pct": 91.9,
+        "bpd_offline": 974400.0,
+        "wow_chg_pct": 1.0
       },
       "light": {
-        "util_pct": 92.5,
-        "bpd_offline": 393600.0,
-        "wow_chg_pct": 0.1
+        "util_pct": 95.8,
+        "bpd_offline": 218500.0,
+        "wow_chg_pct": 1.8
       },
       "middle": {
-        "util_pct": 94.1,
-        "bpd_offline": 109000.0,
-        "wow_chg_pct": 0.3
+        "util_pct": 97.7,
+        "bpd_offline": 43000.0,
+        "wow_chg_pct": 1.8
       },
       "heavy": {
-        "util_pct": 88.1,
-        "bpd_offline": 159000.0,
-        "wow_chg_pct": null
+        "util_pct": 92.6,
+        "bpd_offline": 99000.0,
+        "wow_chg_pct": 2.2
       }
     },
     {
@@ -103,14 +103,14 @@
         "wow_chg_pct": null
       },
       "light": {
-        "util_pct": 96.1,
-        "bpd_offline": 61000.0,
-        "wow_chg_pct": -1.7
+        "util_pct": 97.8,
+        "bpd_offline": 35000.0,
+        "wow_chg_pct": 1.3
       },
       "middle": {
         "util_pct": 100.0,
         "bpd_offline": 0.0,
-        "wow_chg_pct": 1.5
+        "wow_chg_pct": null
       },
       "heavy": {
         "util_pct": 100.0,
@@ -180,7 +180,7 @@
           "capacity_bpd": 26000.0,
           "status": "OFF",
           "comment": "since June 17, 2026",
-          "days_since": 15
+          "days_since": 20
         },
         {
           "category": "primary",
@@ -207,7 +207,7 @@
           "capacity_bpd": 53000.0,
           "status": "OFF",
           "comment": "since June 16, 2026",
-          "days_since": 16
+          "days_since": 21
         },
         {
           "category": "light",
@@ -225,15 +225,15 @@
           "capacity_bpd": 55000.0,
           "status": "OFF",
           "comment": "since December 08, 2020",
-          "days_since": 2032
+          "days_since": 2037
         },
         {
           "category": "middle",
           "facility": "Monroe Energy - Trainer",
           "unit_name": "Hydrocracker 1",
           "capacity_bpd": 23000.0,
-          "status": "ON",
-          "comment": "since July 01, 2026",
+          "status": "OFF",
+          "comment": "since July 06, 2026",
           "days_since": 1
         },
         {
@@ -252,11 +252,11 @@
           "capacity_bpd": 27000.0,
           "status": "OFF",
           "comment": "since April 28, 2020",
-          "days_since": 2256
+          "days_since": 2261
         }
       ],
       "narrative": {
-        "News": "Monroe Energy - Trainer: the 23,000 bpd hydrocracker was restarted during the afternoon of July 1 (EST). Increased activity began at the 23,000 bpd hydrocracker during the late afternoon of June 30 (EST). Previously, two 104,000 bpd CDUs, two 26,000 bpd VDUs, the 50,000 bpd catalytic reformer and 26,000 bpd diesel hydrotreater were restarted during the afternoon of June 30. A fire occurred at the FCC on June 25, halting restart activities at the facility after all monitored units were shut during the late afternoon of June 16 due to a leak, according to sources.",
+        "News": "Monroe Energy - Trainer: the 23,000 bpd hydrocracker was shut during the evening of July 6 (EST) after being recently restarted on July 1. Earlier, two 104,000 bpd CDUs, two 26,000 bpd VDUs, the 50,000 bpd catalytic reformer and 26,000 bpd diesel hydrotreater were restarted during the afternoon of June 30 after all monitored units were shut on June 16 due to a leak, according to sources. The 53,000 bpd FCC remained offline, a fire was reported at the unit on June 25.",
         "Ongoing Events": "Irving - St. John: a sulfur recovery unit was restarted during the morning of July 1. The unit was shut on June 16.",
         "Planned Maintenance": ""
       }
@@ -266,30 +266,39 @@
       "unit_changes": [
         {
           "category": "primary",
-          "facility": "Marathon - Mandan",
+          "facility": "Marathon - Detroit",
           "unit_name": "CDU 1",
-          "capacity_bpd": 74000.0,
-          "status": "ON",
-          "comment": "since July 01, 2026",
-          "days_since": 1
+          "capacity_bpd": 147000.0,
+          "status": "OFF",
+          "comment": "since July 05, 2026",
+          "days_since": 2
+        },
+        {
+          "category": "primary",
+          "facility": "Marathon - Detroit",
+          "unit_name": "VDU 1",
+          "capacity_bpd": 55000.0,
+          "status": "OFF",
+          "comment": "since July 05, 2026",
+          "days_since": 2
         },
         {
           "category": "light",
           "facility": "Marathon - Detroit",
           "unit_name": "Catalytic Reformer 1",
           "capacity_bpd": 21500.0,
-          "status": "ON",
-          "comment": "",
-          "days_since": null
+          "status": "OFF",
+          "comment": "since July 05, 2026",
+          "days_since": 2
         },
         {
           "category": "light",
           "facility": "Marathon - Detroit",
           "unit_name": "FCC 1",
           "capacity_bpd": 35000.0,
-          "status": "ON",
-          "comment": "",
-          "days_since": null
+          "status": "OFF",
+          "comment": "since July 05, 2026",
+          "days_since": 2
         },
         {
           "category": "light",
@@ -298,43 +307,7 @@
           "capacity_bpd": 34000.0,
           "status": "OFF",
           "comment": "since November 17, 2025",
-          "days_since": 227
-        },
-        {
-          "category": "light",
-          "facility": "Marathon - Mandan",
-          "unit_name": "Alkylation 1",
-          "capacity_bpd": 4400.0,
-          "status": "ON",
-          "comment": "since July 02, 2026",
-          "days_since": 0
-        },
-        {
-          "category": "light",
-          "facility": "Marathon - Mandan",
-          "unit_name": "Catalytic Reformer 1",
-          "capacity_bpd": 12500.0,
-          "status": "ON",
-          "comment": "since July 02, 2026",
-          "days_since": 0
-        },
-        {
-          "category": "light",
-          "facility": "Marathon - Mandan",
-          "unit_name": "FCC 1",
-          "capacity_bpd": 27000.0,
-          "status": "ON",
-          "comment": "since July 01, 2026",
-          "days_since": 1
-        },
-        {
-          "category": "light",
-          "facility": "Marathon - Mandan",
-          "unit_name": "Hydrotreater 2",
-          "capacity_bpd": 4300.0,
-          "status": "ON",
-          "comment": "since July 02, 2026",
-          "days_since": 0
+          "days_since": 232
         },
         {
           "category": "light",
@@ -359,9 +332,9 @@
           "facility": "Marathon - Robinson",
           "unit_name": "Catalytic Reformer 2",
           "capacity_bpd": 43000.0,
-          "status": "OFF",
-          "comment": "since June 24, 2026",
-          "days_since": 8
+          "status": "ON",
+          "comment": "",
+          "days_since": null
         },
         {
           "category": "light",
@@ -395,9 +368,9 @@
           "facility": "Marathon - Robinson",
           "unit_name": "Hydrotreater 4",
           "capacity_bpd": 24000.0,
-          "status": "ON",
-          "comment": "",
-          "days_since": null
+          "status": "OFF",
+          "comment": "since July 01, 2026",
+          "days_since": 6
         },
         {
           "category": "light",
@@ -419,12 +392,12 @@
         },
         {
           "category": "middle",
-          "facility": "Marathon - Mandan",
-          "unit_name": "Hydrotreater 1",
-          "capacity_bpd": 23800.0,
-          "status": "ON",
-          "comment": "since July 02, 2026",
-          "days_since": 0
+          "facility": "Marathon - Detroit",
+          "unit_name": "Hydrotreater 2",
+          "capacity_bpd": 7000.0,
+          "status": "OFF",
+          "comment": "since July 05, 2026",
+          "days_since": 2
         },
         {
           "category": "heavy",
@@ -433,6 +406,33 @@
           "capacity_bpd": 8500.0,
           "status": "OFF",
           "comment": "since July 01, 2026",
+          "days_since": 6
+        },
+        {
+          "category": "heavy",
+          "facility": "Marathon - Detroit",
+          "unit_name": "Coker 1",
+          "capacity_bpd": 28000.0,
+          "status": "OFF",
+          "comment": "since July 05, 2026",
+          "days_since": 2
+        },
+        {
+          "category": "heavy",
+          "facility": "Marathon - Robinson",
+          "unit_name": "Coker 1",
+          "capacity_bpd": 18500.0,
+          "status": "ON",
+          "comment": "",
+          "days_since": null
+        },
+        {
+          "category": "heavy",
+          "facility": "Marathon - Robinson",
+          "unit_name": "Coker 2",
+          "capacity_bpd": 12000.0,
+          "status": "OFF",
+          "comment": "since July 06, 2026",
           "days_since": 1
         },
         {
@@ -442,7 +442,7 @@
           "capacity_bpd": 16000.0,
           "status": "OFF",
           "comment": "since October 31, 2022",
-          "days_since": 1340
+          "days_since": 1345
         },
         {
           "category": "heavy",
@@ -455,8 +455,8 @@
         }
       ],
       "narrative": {
-        "News": "Marathon - Mandan: the 74,000 bpd CDU and 27,000 bpd FCC were restarted during the morning of July 1. Also, increased activi- ty began at the 23,800 bpd diesel hydrotreater, 4,300 bpd gasoline hydrotreater and 4,400 bpd alkylation unit during the morning of July 1. All monitored units were shut during the evening of June 29.",
-        "Ongoing Events": "HF Sinclair - Tulsa (West): the 8,500 bpd coker was shut during the morning of July 1. CVR - Coffeyville: activity at the 26,000 bpd coker returned to normal operational levels during the early morning of June 27. De- creased activity began at the unit during the afternoon of June 24. Marathon - Robinson: the 43,000 bpd catalytic reformer was shut during the afternoon of June 24. Decreased unit and furnace stack activity began at that time. Marathon - Detroit: elevated flaring began at the refinery during the evening of June 17. The 34,000 bpd reformer feed hy- drotreater remained offline.",
+        "News": "No changes since last report.",
+        "Ongoing Events": "Marathon - Robinson: the 12,000 bpd coker was shut during the morning of July 6. The 43,000 bpd catalytic reformer was restarted during the morning of July 4. Increased activity began at the unit during the afternoon of July 2 (EST). The unit was shut on June 24. The 24,000 bpd reformer feed hydrotreater was shut dur- ing the late evening of July 1 (EST). Marathon - Detroit: multiple units were shut during the evening of July 5. Units include the 147,000 bpd CDU, 55,000 bpd VDU, 35,000 bpd FCC, 21,500 bpd catalytic reformer, 28,000 bpd coker and 7,000 bpd kerosene hydrotreater. The 34,000 bpd reformer feed hydrotreater was shut on November 17, 2025 and remained offline. Marathon - Mandan: the 12,500 bpd catalytic reformer, 23,800 bpd diesel hydrotreater, 4,300 bpd gasoline hydrotreater, 4,400 bpd alkylation unit and sulfur recovery unit were restarted during the morning of July 2. Increased activity began at the diesel hydrotreater, gasoline hydrotreater and alkylation unit during the morning of July 1. The 74,000 bpd CDU and 27,000 bpd FCC were restarted during the morning of July 1. All monitored units were shut during the evening of June 29. HF Sinclair - Tulsa (West): the 8,500 bpd coker was shut during the morning of July 1.",
         "Planned Maintenance": ""
       }
     },
@@ -470,7 +470,7 @@
           "capacity_bpd": 174000.0,
           "status": "OFF",
           "comment": "since June 10, 2026",
-          "days_since": 22
+          "days_since": 27
         },
         {
           "category": "primary",
@@ -479,16 +479,16 @@
           "capacity_bpd": 85300.0,
           "status": "OFF",
           "comment": "since June 10, 2026",
-          "days_since": 22
+          "days_since": 27
         },
         {
           "category": "primary",
-          "facility": "GCC Bunkers - Galveston",
+          "facility": "Lazarus Energy - Nixon",
           "unit_name": "CDU 1",
-          "capacity_bpd": 50000.0,
-          "status": "ON",
-          "comment": "since July 02, 2026",
-          "days_since": 0
+          "capacity_bpd": 15000.0,
+          "status": "OFF",
+          "comment": "since July 06, 2026",
+          "days_since": 1
         },
         {
           "category": "primary",
@@ -497,7 +497,7 @@
           "capacity_bpd": 140000.0,
           "status": "OFF",
           "comment": "since February 24, 2025",
-          "days_since": 493
+          "days_since": 498
         },
         {
           "category": "primary",
@@ -506,7 +506,7 @@
           "capacity_bpd": 149000.0,
           "status": "OFF",
           "comment": "since January 24, 2025",
-          "days_since": 524
+          "days_since": 529
         },
         {
           "category": "primary",
@@ -515,7 +515,7 @@
           "capacity_bpd": 95550.0,
           "status": "OFF",
           "comment": "since February 24, 2025",
-          "days_since": 493
+          "days_since": 498
         },
         {
           "category": "primary",
@@ -524,7 +524,7 @@
           "capacity_bpd": 95550.0,
           "status": "OFF",
           "comment": "since January 24, 2025",
-          "days_since": 524
+          "days_since": 529
         },
         {
           "category": "primary",
@@ -542,7 +542,7 @@
           "capacity_bpd": 165000.0,
           "status": "OFF",
           "comment": "since June 19, 2026",
-          "days_since": 13
+          "days_since": 18
         },
         {
           "category": "primary",
@@ -560,7 +560,7 @@
           "capacity_bpd": 55000.0,
           "status": "OFF",
           "comment": "since June 19, 2026",
-          "days_since": 13
+          "days_since": 18
         },
         {
           "category": "light",
@@ -596,7 +596,7 @@
           "capacity_bpd": 56000.0,
           "status": "OFF",
           "comment": "since June 01, 2021",
-          "days_since": 1857
+          "days_since": 1862
         },
         {
           "category": "light",
@@ -614,36 +614,18 @@
           "capacity_bpd": 97000.0,
           "status": "OFF",
           "comment": "since February 24, 2025",
-          "days_since": 493
+          "days_since": 498
         }
       ],
       "narrative": {
-        "News": "GCC Bunkers - Galveston: the 50,000 bpd CDU was restarted during the morning of July 2. The unit was observed to be offline as of the afternoon of June 25. The exact timing of the shutdown is unknown due to a temporary camera outage. Shell - Norco: significant elevated flaring began during the after- noon of July 1 (EST). Similar flaring has previously been associat- ed with operational issues and maintenance. Activity at all moni- tored units remained unchanged.",
-        "Ongoing Events": "TotalEnergies - Port Arthur: the 80,000 bpd CDU and 52,000 bpd VDU were restarted during the morning of June 30. In- creased activity began at the 80,000 bpd FCC during the morning of June 27, but remained below operational levels. Also, increased activity halted at the 165,000 bpd CDU and 55,000 bpd VDU dur- ing the morning of June 28 after beginning June 25. Increased ac- tivity continued at the 60,000 bpd coker, 10,000 bpd coker naph- tha hydrotreater, 66,000 bpd ULSD hydrotreater, 39,600 bpd cat- alytic reformer and 45,500 bpd reformer feed hydrotreater since the afternoon of June 25. All monitored units were shut during the late evening of June 19. Marathon - El Paso: the 66,000 bpd CDU, 17,350 bpd VDU and 18,000 bpd catalytic reformer were restarted during the morning of June 30. Increased activity began at the crude section during the morning of June 28 after it shut during the evening of June 24. In- creased activity began at the catalytic reformer during the morning of June 26 after it shut during the morning of June 25. Citgo - Corpus Christi: the 44,000 bpd coker was restarted dur- ing the morning of June 20. Increased activity began at the unit during the evening of June 17. The unit was shut on June 14. The 174,000 bpd CDU and 85,300 bpd VDU were shut during the late morning of June 18 and remained offline. The units were ini- tially shut on June 10. Exxon - Baytown: significant elevated flaring began during the morning of June 18. Similar flaring has previously been associated with operational issues and maintenance. Activity at all monitored units remained unchanged. Also at the refinery, decreased activity continued at the 314,000 bpd and 115,000 bpd CDUs since May 1 and May 26, respectively. The company reported an operational upset resulting in flaring and noise on June 18, according to a community notification. PBF - Chalmette: the 19,000 bpd catalytic reformer was shut dur- ing the afternoon of May 8. A fire was reported at the facility. Phillips 66 - Sweeny: the 30,000 bpd FCC was shut during the af- ternoon of March 28. Decreased furnace stack activity began at that time.",
+        "News": "Marathon - Galveston Bay: activity at the 145,000 bpd FCC re- turned to normal operational levels during the evening of July 6 (EST). Decreased activity began at the unit during the afternoon of July 2 (EST). Localized unit cooling began at that time. Lazarus Energy - Nixon: the 15,000 bpd CDU was shut during the afternoon of July 6 (EST). Delek - Big Spring: brief elevated flaring began during the after- noon of July 5 (EST). Similar flaring has previously been associat- ed with operational issues and maintenance. Activity at all moni- tored units remained unchanged.",
+        "Ongoing Events": "TotalEnergies - Port Arthur: the 80,000 bpd FCC, 60,000 bpd coker, 10,000 bpd coker naphtha hydrotreater, 66,000 bpd ULSD hydrotreater, 39,600 bpd catalytic reformer and 45,500 bpd re- former feed hydrotreater were restarted during the morning of June 6. Increased activity began at the 80,000 bpd FCC during the morning of June 27. Increased activity began at the 60,000 bpd coker, 10,000 bpd coker naphtha hydrotreater, 66,000 bpd ULSD hydrotreater, 39,600 bpd catalytic reformer and 45,500 bpd re- former feed hydrotreater June 25. The 80,000 bpd CDU and 52,000 bpd VDU were restarted June 30. Also, increased activity halted at the 165,000 bpd CDU and 55,000 bpd VDU June 28 after beginning June 25. All monitored units were shut during the late evening of June 19. GCC Bunkers - Galveston: the 50,000 bpd CDU was restarted during the morning of July 2. The unit was observed to be offline as of the afternoon of June 25. The exact timing of the shutdown is unknown due to a temporary camera outage. Citgo - Corpus Christi: the 44,000 bpd coker was restarted dur- ing the morning of June 20. Increased activity began at the unit during the evening of June 17. The unit was shut on June 14. The 174,000 bpd CDU and 85,300 bpd VDU were shut during the late morning of June 18 and remained offline. The units were ini- tially shut on June 10. PBF - Chalmette: the 19,000 bpd catalytic reformer was shut dur- ing the afternoon of May 8. A fire was reported at the facility. Phillips 66 - Sweeny: the 30,000 bpd FCC was shut during the af- ternoon of March 28. Decreased furnace stack activity began at that time.",
         "Planned Maintenance": ""
       }
     },
     {
       "name": "West",
       "unit_changes": [
-        {
-          "category": "light",
-          "facility": "Marathon - Anacortes",
-          "unit_name": "Catalytic Reformer 1",
-          "capacity_bpd": 26000.0,
-          "status": "OFF",
-          "comment": "since June 27, 2026",
-          "days_since": 5
-        },
-        {
-          "category": "light",
-          "facility": "Marathon - Anacortes",
-          "unit_name": "FCC 1",
-          "capacity_bpd": 52000.0,
-          "status": "ON",
-          "comment": "",
-          "days_since": null
-        },
         {
           "category": "light",
           "facility": "Marathon - Wilmington",
@@ -669,7 +651,7 @@
           "capacity_bpd": 35000.0,
           "status": "OFF",
           "comment": "since October 02, 2018",
-          "days_since": 2830
+          "days_since": 2835
         },
         {
           "category": "light",
@@ -682,8 +664,8 @@
         }
       ],
       "narrative": {
-        "News": "Marathon - Anacortes: increased activity began at the 26,000 bpd catalytic reformer during the late afternoon of July 1 (EST), but remained below operational levels. The unit was shut during the afternoon of June 27.",
-        "Ongoing Events": "No ongoing events to report.",
+        "News": "No changes since last report.",
+        "Ongoing Events": "Marathon - Anacortes: the 26,000 bpd catalytic reformer was restarted during the evening of July 5 (EST). Increased activity be- gan at the unit on July 1 and the unit was shut on June 27.",
         "Planned Maintenance": ""
       }
     },
