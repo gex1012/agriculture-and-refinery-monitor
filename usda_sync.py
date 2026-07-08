@@ -1,6 +1,7 @@
 """Weekly sync of USDA NASS 'Crop Progress' national bulletin — free fixed-name text report,
 no API key. Released Mondays during the growing season at a predictable URL:
-https://release.nass.usda.gov/reports/progYYNN.txt (YY=year, NN=sequential release number).
+https://release.nass.usda.gov/reports/progNNYY.txt (NN=sequential release number, YY=year —
+sequence number FIRST, year SECOND; e.g. prog2726.txt = release 27 of 2026, released July 6, 2026).
 
 We discover the latest NN by probing upward, parse the condition (very poor..excellent) and
 progress (% complete vs 5yr avg) tables for the commodities we track, and cache the result.
@@ -47,13 +48,17 @@ def _discover_progress_titles(text):
 
 
 def _find_latest_report_text():
-    """Report numbering isn't a clean calendar-week match (season's first release each year is an
-    arbitrary starting index, e.g. 16 in 2026), so scan the plausible full range and keep the highest
-    hit rather than assuming a start/break point."""
+    """Filename is prog{seq:02d}{year2} — sequence number FIRST, year SECOND. Getting this backwards
+    (year+seq) silently "worked" for months because prog2626 reads the same either way (both halves
+    happen to be '26' in week 26 of 2026); it broke the moment the sequence ticked over to 27, since
+    'prog2627' (the wrong, year-first guess) doesn't exist — the real file is 'prog2726'. Report
+    numbering also isn't a clean calendar-week match (season's first release each year is an
+    arbitrary starting index, e.g. 16 in 2026), so scan the plausible full range and keep the
+    highest hit rather than assuming a start/break point."""
     year2 = datetime.date.today().strftime("%y")
     latest_text, latest_n = None, None
     for n in range(1, 53):
-        fn = f"prog{year2}{n:02d}.txt"
+        fn = f"prog{n:02d}{year2}.txt"
         r = requests.get(f"https://release.nass.usda.gov/reports/{fn}", timeout=20)
         if r.status_code == 200:
             latest_text, latest_n = r.text, n
@@ -228,7 +233,7 @@ def sync(force=False):
 
     result = {
         "released": released,
-        "report_id": f"prog{datetime.date.today().strftime('%y')}{n:02d}",
+        "report_id": f"prog{n:02d}{datetime.date.today().strftime('%y')}",
         "synced_at": datetime.datetime.now().isoformat(timespec="seconds"),
         "conditions": conditions,
         "progress_by_crop": progress_by_crop,
