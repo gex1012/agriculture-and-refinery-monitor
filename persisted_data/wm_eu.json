@@ -1,19 +1,19 @@
 {
-  "report_date": "2026-07-13",
-  "source_file": "wm_european_refinery_intelligence_report_202607131.pdf",
-  "synced_at": "2026-07-14T06:50:01",
+  "report_date": "2026-07-14",
+  "source_file": "wm_european_refinery_intelligence_report_202607141.pdf",
+  "synced_at": "2026-07-15T03:02:39",
   "utilization": [
     {
       "region": "Europe Total",
       "primary": {
-        "util_pct": 96.6,
-        "bpd_offline": 421800.0,
-        "wow_chg_pct": 1.8
+        "util_pct": 97.0,
+        "bpd_offline": 366800.0,
+        "wow_chg_pct": 2.0
       },
       "light": {
-        "util_pct": 91.7,
-        "bpd_offline": 266530.0,
-        "wow_chg_pct": -2.2
+        "util_pct": 94.4,
+        "bpd_offline": 179530.0,
+        "wow_chg_pct": -1.5
       },
       "middle": {
         "util_pct": 100.0,
@@ -23,20 +23,20 @@
       "heavy": {
         "util_pct": 80.8,
         "bpd_offline": 201400.0,
-        "wow_chg_pct": -1.9
+        "wow_chg_pct": -2.2
       }
     },
     {
       "region": "Central and East Europe",
       "primary": {
-        "util_pct": 78.1,
-        "bpd_offline": 321800.0,
-        "wow_chg_pct": null
+        "util_pct": 81.8,
+        "bpd_offline": 266800.0,
+        "wow_chg_pct": 1.9
       },
       "light": {
         "util_pct": 93.9,
         "bpd_offline": 16000.0,
-        "wow_chg_pct": 4.1
+        "wow_chg_pct": 4.6
       },
       "middle": {
         "util_pct": 100.0,
@@ -59,7 +59,7 @@
       "light": {
         "util_pct": 95.2,
         "bpd_offline": 44630.0,
-        "wow_chg_pct": 2.2
+        "wow_chg_pct": 2.6
       },
       "middle": {
         "util_pct": 100.0,
@@ -103,9 +103,9 @@
         "wow_chg_pct": null
       },
       "light": {
-        "util_pct": 84.7,
-        "bpd_offline": 87000.0,
-        "wow_chg_pct": -12.3
+        "util_pct": 100.0,
+        "bpd_offline": 0.0,
+        "wow_chg_pct": -9.2
       },
       "middle": {
         "util_pct": 100.0,
@@ -115,7 +115,7 @@
       "heavy": {
         "util_pct": 82.4,
         "bpd_offline": 26000.0,
-        "wow_chg_pct": -11.7
+        "wow_chg_pct": -13.2
       }
     }
   ],
@@ -125,21 +125,12 @@
       "unit_changes": [
         {
           "category": "light",
-          "facility": "Klesch - Heide",
-          "unit_name": "Catalytic Reformer 1",
-          "capacity_bpd": 20300.0,
-          "status": "ON",
-          "comment": "since 10 Jul 2026",
-          "days_since": 3
-        },
-        {
-          "category": "light",
           "facility": "TotalEnergies - Donges",
           "unit_name": "FCC 1",
           "capacity_bpd": 55000.0,
           "status": "OFF",
           "comment": "since 27 Apr 2026",
-          "days_since": 77
+          "days_since": 78
         },
         {
           "category": "light",
@@ -148,7 +139,7 @@
           "capacity_bpd": 40000.0,
           "status": "OFF",
           "comment": "since 09 Jul 2026",
-          "days_since": 4
+          "days_since": 5
         },
         {
           "category": "light",
@@ -166,7 +157,7 @@
           "capacity_bpd": 23900.0,
           "status": "OFF",
           "comment": "since 10 Jul 2026",
-          "days_since": 3
+          "days_since": 4
         },
         {
           "category": "heavy",
@@ -175,27 +166,18 @@
           "capacity_bpd": 39000.0,
           "status": "OFF",
           "comment": "since 19 Apr 2026",
-          "days_since": 85
+          "days_since": 86
         }
       ],
       "narrative": {
-        "News": "Netherlands - TotalEnergies - Zeeland: the 23,900 bpd naphtha hydrotreater was shut during the afternoon of July 10 (GMT). Gradual unit cooling began at that time.",
-        "Ongoing Events": "France - TotalEnergies - Donges: the 40,000 bpd VGO hydro- treater was shut during the morning of July 9 (GMT). Gradual cool- ing began at that time. The unit was recently restarted on July 3 after being shut on April 26. Also, the 55,000 bpd FCC and the 39,000 bpd visbreaker remained offline. Planned work was expec- ted to begin early May, according to sources.",
-        "Planned Maintenance": "France - TotalEnergies - Donges: unspecified planned work is expected to start in May, according to source. Germany - MiRO - Karlsruhe: planned work on the FCC is ex- pected during the spring of 2027, according to Bloomberg."
+        "News": "No changes since last report.",
+        "Ongoing Events": "Netherlands - TotalEnergies - Zeeland: the 23,900 bpd naphtha hydrotreater was shut during the afternoon of July 10 (GMT). Gradual unit cooling began at that time. France - TotalEnergies - Donges: the 40,000 bpd VGO hydrotreater was shut during the morning of July 9 (GMT). Gradual cooling began at that time. The unit was recently restarted on July 3 after being shut on April 26. Also, the 55,000 bpd FCC and the 39,000 bpd visbreaker remained offline. Planned work was expected to begin early May, according to sources.",
+        "Planned Maintenance": "France - TotalEnergies - Donges: unspecified planned work is expected to start in May, according to source. Germany - MiRO - Karlsruhe: planned work on the FCC is expected during the spring of 2027, according to Bloomberg."
       }
     },
     {
       "name": "Mediterranean",
       "unit_changes": [
-        {
-          "category": "primary",
-          "facility": "GOI Energy - ISAB (Nord)",
-          "unit_name": "CDU 1",
-          "capacity_bpd": 124000.0,
-          "status": "ON",
-          "comment": "since 10 Jul 2026",
-          "days_since": 3
-        },
         {
           "category": "primary",
           "facility": "Repsol - Cartagena",
@@ -212,7 +194,7 @@
           "capacity_bpd": 100000.0,
           "status": "OFF",
           "comment": "since 26 Jan 2026",
-          "days_since": 168
+          "days_since": 169
         },
         {
           "category": "primary",
@@ -239,7 +221,7 @@
           "capacity_bpd": 12000.0,
           "status": "OFF",
           "comment": "since 21 Jun 2026",
-          "days_since": 22
+          "days_since": 23
         },
         {
           "category": "light",
@@ -249,15 +231,6 @@
           "status": "ON",
           "comment": "",
           "days_since": null
-        },
-        {
-          "category": "light",
-          "facility": "INEOS - Lavera",
-          "unit_name": "FCC 1",
-          "capacity_bpd": 36500.0,
-          "status": "ON",
-          "comment": "since 12 Jul 2026",
-          "days_since": 1
         },
         {
           "category": "light",
@@ -275,34 +248,7 @@
           "capacity_bpd": 32630.0,
           "status": "OFF",
           "comment": "since 05 Jul 2026",
-          "days_since": 8
-        },
-        {
-          "category": "middle",
-          "facility": "Saras - Sarroch",
-          "unit_name": "Hydrocracker 1",
-          "capacity_bpd": 55000.0,
-          "status": "ON",
-          "comment": "",
-          "days_since": null
-        },
-        {
-          "category": "middle",
-          "facility": "Saras - Sarroch",
-          "unit_name": "Hydrocracker 2",
-          "capacity_bpd": 60000.0,
-          "status": "ON",
-          "comment": "",
-          "days_since": null
-        },
-        {
-          "category": "middle",
-          "facility": "Saras - Sarroch",
-          "unit_name": "Hydrotreater 2",
-          "capacity_bpd": 26500.0,
-          "status": "ON",
-          "comment": "since 10 Jul 2026",
-          "days_since": 3
+          "days_since": 9
         },
         {
           "category": "heavy",
@@ -311,7 +257,7 @@
           "capacity_bpd": 45300.0,
           "status": "OFF",
           "comment": "since 06 Feb 2024",
-          "days_since": 888
+          "days_since": 889
         },
         {
           "category": "heavy",
@@ -320,12 +266,12 @@
           "capacity_bpd": 48000.0,
           "status": "OFF",
           "comment": "since 29 Oct 2024",
-          "days_since": 622
+          "days_since": 623
         }
       ],
       "narrative": {
-        "News": "France - INEOS - Lavera: the 36,500 bpd FCC was restarted dur- ing the morning of July 12 (GMT). Increased activity began at the unit on July 9 and the unit was shut on June 15.",
-        "Ongoing Events": "Italy - ENI - Milazzo: the 111,000 bpd CDU was restarted during the morning of July 9 (GMT). Increased activity began at the unit on July 7 and the unit was shut on June 26. Also, increased activ- ity began at the 12,000 bpd catalytic reformer during the morning of July 9 (GMT), but remained below normal operational levels thus far. The unit was shut on June 21. Planned work was repor- ted, according to sources. France - Rhone Energies - Fos-sur-Mer: the 32,630 bpd FCC was shut during the evening of July 5 (GMT). Decreased scrubber activity began at that time. Also, elevated flaring began at the re- finery during the morning of July 5 (GMT). The company warned of flaring as a result of an unspecified unit shutdown via a local com- munity notice. Spain - Repsol - Cartagena: a hydrogen plant was restarted dur- ing the morning of February 13 following a brief outage. The unit was shut on February 11. Also at the refinery, the 100,000 bpd CDU was shut during the evening of January 26 and remained off- line.",
+        "News": "No changes since last report.",
+        "Ongoing Events": "France - INEOS - Lavera: the 36,500 bpd FCC was restarted during the morning of July 12 (GMT). Increased activity began at the unit on July 9 and the unit was shut on June 15. Italy - ENI - Milazzo: the 111,000 bpd CDU was restarted during the morning of July 9 (GMT). Increased activity began at the unit on July 7 and the unit was shut on June 26. Also, increased activity began at the 12,000 bpd catalytic reformer during the morning of July 9 (GMT), but remained below normal operational levels thus far. The unit was shut on June 21. Planned work was reported, according to sources. France - Rhone Energies - Fos-sur-Mer: the 32,630 bpd FCC was shut during the evening of July 5 (GMT). Decreased scrubber activity began at that time. Also, elevated flaring began at the refinery during the morning of July 5 (GMT). The company warned of flaring as a result of an unspecified unit shutdown via a local community notice. Spain - Repsol - Cartagena: a hydrogen plant was restarted during the morning of February 13 following a brief outage. The unit was shut on February 11. Also at the refinery, the 100,000 bpd CDU was shut during the evening of January 26 and remained offline.",
         "Planned Maintenance": "Greece - Helleniq Petroleum*: work at the Aspropyrgos refinery is postponed to the first half of 2026, according to Bloomberg. The work is expected to start in February. France - TotalEnergies – Feyzin: a turnaround is expected in 2027, according to Bloomberg. Spain - Repsol - Bilbao: planned work on the coker is expected in 2026. Exact dates are unknown but are expected to take at least 40 days. Spain - Moeve - San Roque: unspecified partial work is expected in Q4, according to sources."
       }
     },
@@ -357,7 +303,7 @@
           "capacity_bpd": 72300.0,
           "status": "OFF",
           "comment": "since 20 Oct 2025",
-          "days_since": 266
+          "days_since": 267
         },
         {
           "category": "primary",
@@ -384,7 +330,7 @@
           "capacity_bpd": 74000.0,
           "status": "OFF",
           "comment": "since 20 Oct 2025",
-          "days_since": 266
+          "days_since": 267
         },
         {
           "category": "primary",
@@ -420,7 +366,7 @@
           "capacity_bpd": 69500.0,
           "status": "OFF",
           "comment": "since 27 Jun 2026",
-          "days_since": 16
+          "days_since": 17
         },
         {
           "category": "primary",
@@ -456,7 +402,7 @@
           "capacity_bpd": 51000.0,
           "status": "OFF",
           "comment": "since 27 Jun 2026",
-          "days_since": 16
+          "days_since": 17
         },
         {
           "category": "primary",
@@ -472,9 +418,9 @@
           "facility": "Slovnaft - Bratislava",
           "unit_name": "CDU 2",
           "capacity_bpd": 55000.0,
-          "status": "OFF",
-          "comment": "since 25 Jun 2026",
-          "days_since": 18
+          "status": "ON",
+          "comment": "since 13 Jul 2026",
+          "days_since": 1
         },
         {
           "category": "primary",
@@ -491,8 +437,8 @@
           "unit_name": "Catalytic Reformer 1",
           "capacity_bpd": 16000.0,
           "status": "ON",
-          "comment": "since 12 Jul 2026",
-          "days_since": 1
+          "comment": "",
+          "days_since": null
         },
         {
           "category": "light",
@@ -510,7 +456,7 @@
           "capacity_bpd": 16000.0,
           "status": "OFF",
           "comment": "since 03 Jul 2026",
-          "days_since": 10
+          "days_since": 11
         },
         {
           "category": "heavy",
@@ -519,7 +465,7 @@
           "capacity_bpd": 21100.0,
           "status": "OFF",
           "comment": "since 11 Jul 2026",
-          "days_since": 2
+          "days_since": 3
         },
         {
           "category": "heavy",
@@ -528,13 +474,13 @@
           "capacity_bpd": 22000.0,
           "status": "OFF",
           "comment": "since 14 May 2026",
-          "days_since": 60
+          "days_since": 61
         }
       ],
       "narrative": {
-        "News": "Hungary - MOL - Duna: the 21,100 bpd coker was shut during the evening of July 11 (GMT). The unit was recently restarted on July 10 after being shut on June 6. The 72,300 bpd CDU and the 74,000 bpd VDU were shut following a fire on October 20 and re- mained offline. Slovakia - Slovnaft - Bratislava: the 16,000 bpd catalytic re- former was restarted during the evening of July 12 (GMT). Also, in- creased activity continued at the 55,000 bpd CDU since the after- noon of July 11 (GMT), but remained below normal operational levels thus far. Both units were shut on June 25. Moreover, the 16,000 bpd naphtha hydrotreater was shut on July 3 and remained offline.",
-        "Ongoing Events": "Poland - Orlen - Plock: the 70,000 bpd hydrocracker and a hy- drogen plant were restarted during the morning of July 1. In- creased activity began at the units on June 25. The hydrocracker was shut on May 13 and the hydrogen plant was shut on May 15. Also, a 69,500 bpd CDU and a 51,000 bpd VDU were shut on June 27 and the 22,000 bpd visbreaker was shut on May 14. The units remained offline. Planned work was expected to begin mid-May, according to sources.",
-        "Planned Maintenance": "Poland - Orlen - Plock: planned work on a hydrocracker was ex- pected to begin mid-May, according to sources. Lithuania - Orlen Lietuva- Mazekai: unspecified planned work on a number of units is expected to start in Q1 and Q2. More main- tenance is expected in 2027, according to sources."
+        "News": "Slovakia - Slovnaft - Bratislava: the 55,000 bpd CDU was restarted during the evening of July 13 (GMT). Increased activity began at the unit on July 11 and the unit was shut on June 25. Earlier, the 16,000 bpd catalytic reformer was restarted during the evening of July 12. The 16,000 bpd naphtha hydrotreater was shut on July 3 and remained offline.",
+        "Ongoing Events": "Hungary - MOL - Duna: the 21,100 bpd coker was shut during the evening of July 11 (GMT). The unit was recently restarted on July 10 after being shut on June 6. The 72,300 bpd CDU and the 74,000 bpd VDU were shut following a fire on October 20 and remained offline. Poland - Orlen - Plock: the 70,000 bpd hydrocracker and a hydrogen plant were restarted during the morning of July 1. Increased activity began at the units on June 25. The hydrocracker was shut on May 13 and the hydrogen plant was shut on May 15. Also, a 69,500 bpd CDU and a 51,000 bpd VDU were shut on June 27 and the 22,000 bpd visbreaker was shut on May 14. The units remained offline. Planned work was expected to begin mid-May, according to sources.",
+        "Planned Maintenance": "Poland - Orlen - Plock: planned work on a hydrocracker was expected to begin mid-May, according to sources. Lithuania - Orlen Lietuva- Mazekai: unspecified planned work on a number of units is expected to start in Q1 and Q2. More maintenance is expected in 2027, according to sources."
       }
     },
     {
@@ -554,9 +500,9 @@
           "facility": "Valero - Pembroke",
           "unit_name": "Catalytic Reformer 1",
           "capacity_bpd": 35000.0,
-          "status": "OFF",
-          "comment": "since 12 Jul 2026",
-          "days_since": 1
+          "status": "ON",
+          "comment": "since 14 Jul 2026",
+          "days_since": 0
         },
         {
           "category": "light",
@@ -572,18 +518,18 @@
           "facility": "Valero - Pembroke",
           "unit_name": "Hydrotreater 2",
           "capacity_bpd": 35000.0,
-          "status": "OFF",
-          "comment": "since 11 Jul 2026",
-          "days_since": 2
+          "status": "ON",
+          "comment": "since 14 Jul 2026",
+          "days_since": 0
         },
         {
           "category": "light",
           "facility": "Valero - Pembroke",
           "unit_name": "Isomerization 1",
           "capacity_bpd": 17000.0,
-          "status": "OFF",
-          "comment": "since 12 Jul 2026",
-          "days_since": 1
+          "status": "ON",
+          "comment": "since 14 Jul 2026",
+          "days_since": 0
         },
         {
           "category": "light",
@@ -601,11 +547,11 @@
           "capacity_bpd": 26000.0,
           "status": "OFF",
           "comment": "since 12 Jul 2026",
-          "days_since": 1
+          "days_since": 2
         }
       ],
       "narrative": {
-        "News": "Wales - Valero - Pembroke: the 35,000 bpd catalytic reformer, 17,000 bpd isomerization unit and the 26,000 bpd visbreaker were shut on July 12. The catalytic reformer and the isomerization unit were shut during the morning while the visbreaker was shut during the evening (GMT). Also, the 35,000 bpd gasoline hydrotreater was shut during the evening of July 11 (GMT).",
+        "News": "Wales - Valero - Pembroke: the 35,000 bpd catalytic reformer, 17,000 bpd isomerization unit and the 35,000 bpd gasoline hydrotreater were restarted during the morning of July 14 (GMT). The catalytic reformer and the isomerization unit were shut on July 12 and the gasoline hydrotreater was shut on July 11. The 26,000 bpd visbreaker was shut on July 12 and remained offline.",
         "Ongoing Events": "No ongoing events.",
         "Planned Maintenance": "No planned work in the foreseeable future."
       }
