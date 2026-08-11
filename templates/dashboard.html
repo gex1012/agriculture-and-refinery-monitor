@@ -50,7 +50,7 @@
     <table id="us-refinery-table"><thead><tr>
       <th>炼厂</th><th>地区</th><th>州</th><th class="num">产能(千桶/日)</th>
       <th class="num">当前温度</th><th class="num">未来7日最高温</th>
-      <th>高温风险</th><th>雷暴/洪水风险</th><th>寒潮/积雪风险</th>
+      <th>高温风险</th><th>雷暴/洪水风险</th><th>寒潮/积雪风险</th><th>本县电网停电</th>
     </tr></thead><tbody></tbody></table>
     <div class="section-title">干旱监测（USDM，按州）</div>
     <table id="us-drought-table"><thead><tr>
@@ -58,7 +58,7 @@
       <th class="num">中度(D1)</th><th class="num">严重以上(D2+)</th><th class="num">极端以上(D3+)</th>
       <th>4周趋势</th>
     </tr></thead><tbody></tbody></table>
-    <div class="note">数据来源：气温/降水/大风预报 — Open-Meteo（免费，无需 key）；干旱 — 美国干旱监测 U.S. Drought Monitor 官方 Data Service（usdmdataservices.unl.edu）。风险阈值：高温 ≥38°C 记为高风险、35–38°C 为中风险；雷暴/洪水按单日降水≥50mm 或阵风≥90km/h 记高风险；墨西哥湾沿岸炼厂因未按严寒设计，最低温≤0°C 即记寒潮风险，中西部炼厂阈值为 ≤-25°C 或降雪≥15cm（参考2021年德州寒潮导致约500万桶/日产能停产的先例）。</div>
+    <div class="note">数据来源：气温/降水/大风预报 — Open-Meteo（免费，无需 key）；干旱 — 美国干旱监测 U.S. Drought Monitor 官方 Data Service（usdmdataservices.unl.edu）；本县电网停电 — ODIN（Outage Data Initiative Nationwide，DOE关联的免费公开停电数据，ornl.opendatasoft.com，每10分钟更新，按炼厂所在县匹配，是当地电网压力的参考信号，不代表炼厂本身失电）。风险阈值：高温 ≥38°C 记为高风险、35–38°C 为中风险；雷暴/洪水按单日降水≥50mm 或阵风≥90km/h 记高风险；墨西哥湾沿岸炼厂因未按严寒设计，最低温≤0°C 即记寒潮风险，中西部炼厂阈值为 ≤-25°C 或降雪≥15cm（参考2021年德州寒潮导致约500万桶/日产能停产的先例）。</div>
 
     <div class="section-title">子模块三 · 炼厂开工率总览（Wood Mackenzie）</div>
     <div class="analyst" id="us-wm-analyst"></div>

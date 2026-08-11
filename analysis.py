@@ -78,6 +78,47 @@ def us_state_drought_summary(state_abbr):
     }
 
 
+def _outage_severity(meters):
+    if meters >= 1000:
+        return "high"
+    if meters >= 200:
+        return "moderate"
+    if meters > 0:
+        return "low"
+    return "none"
+
+
+def us_refinery_power_outages(refineries):
+    """Cross-references live county-level grid outage data (ODIN) against refinery locations.
+    This is a proxy signal, not a direct read on refinery power status: a refinery has its own
+    grid interconnection, separate from the residential/commercial meters ODIN counts, but a
+    county-wide outage event (storm damage, grid failure) is a reasonable indicator of local
+    infrastructure stress that plants in the same area are exposed to."""
+    states = sorted({r["state"] for r in refineries if r.get("county")})
+    records = ds.get_us_power_outages(states)
+
+    by_state_county = {}
+    for rec in records:
+        key = (rec.get("state"), rec.get("county"))
+        by_state_county.setdefault(key, []).append(rec)
+
+    state_full = ds.US_STATE_FULL_NAMES
+    results = {}
+    for r in refineries:
+        county = r.get("county")
+        if not county:
+            continue
+        key = (state_full.get(r["state"]), county)
+        matches = by_state_county.get(key, [])
+        meters = sum(m.get("metersaffected") or 0 for m in matches)
+        results[r["name"]] = {
+            "meters_affected": meters, "severity": _outage_severity(meters),
+            "incident_count": len(matches),
+            "utilities": sorted({m.get("name", "").split(",")[0].title() for m in matches}),
+        }
+    return results
+
+
 EU_DROUGHT_POINTS = {
     "NW Europe (ARA)": (51.9, 4.4),
     "Germany": (50.9, 7.0),

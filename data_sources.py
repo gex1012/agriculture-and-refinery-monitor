@@ -112,6 +112,30 @@ def get_us_drought(state_abbr, weeks_back=8):
     return data if isinstance(data, list) else []
 
 
+US_STATE_FULL_NAMES = {
+    "TX": "Texas", "LA": "Louisiana", "IN": "Indiana", "IL": "Illinois", "KY": "Kentucky",
+    "OK": "Oklahoma", "KS": "Kansas", "ND": "North Dakota", "MI": "Michigan", "AR": "Arkansas",
+}
+
+
+def get_us_power_outages(state_abbrs):
+    """Live county-level US power-outage feed: ODIN (Outage Data Initiative Nationwide), a free
+    DOE-adjacent standard hosted on ORNL's open-data portal — no API key. Updated ~every 10 min at
+    the source; cached here for 10 min. Returns raw records (state, county, utility name, meters
+    affected, reported start, estimated restoration)."""
+    state_names = [US_STATE_FULL_NAMES[s] for s in state_abbrs if s in US_STATE_FULL_NAMES]
+    if not state_names:
+        return []
+    where_clause = "state in (" + ", ".join(f"'{s}'" for s in state_names) + ")"
+    data = _cached_get(
+        "https://ornl.opendatasoft.com/api/explore/v2.1/catalog/datasets/odin-real-time-outages-county/records",
+        {"select": "state,county,name,metersaffected,reportedstarttime,estimatedrestorationtime",
+         "where": where_clause, "order_by": "metersaffected desc", "limit": 100},
+        ttl=600,
+    )
+    return data.get("results", []) if isinstance(data, dict) else []
+
+
 def get_eu_precip_history(lat, lon, years=20):
     """Long daily precip/temp history for an EU point, used to build a drought-anomaly proxy."""
     import datetime

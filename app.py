@@ -90,7 +90,16 @@ def api_refinery_risk():
     market = request.args.get("market", "US").upper()
     data = _refinery_risk_list(market)
     drought = _us_drought_panel() if market == "US" else _eu_drought_panel()
+    power_outages = None
+    if market == "US":
+        try:
+            power_outages = analysis.us_refinery_power_outages(refineries.US_GULF_MIDWEST)
+            for r in data:
+                r["power_outage"] = power_outages.get(r["name"])
+        except Exception as e:
+            power_outages = {"error": str(e)}
     return jsonify({"market": market, "refineries": data, "drought": drought,
+                     "power_outages": power_outages,
                      "generated_at": datetime.datetime.now().isoformat(timespec="seconds")})
 
 

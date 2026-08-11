@@ -165,6 +165,11 @@ function trendBadge(t) {
   const label = {worsening:'恶化', improving:'好转', steady:'持平'}[t] || t;
   return `<span class="badge ${t}">${label}</span>`;
 }
+function powerOutageBadge(o) {
+  if (!o || o.severity === 'none' || !o.meters_affected) return '<span class="muted">正常</span>';
+  const label = {high:'高', moderate:'中', low:'低'}[o.severity] || o.severity;
+  return `<span class="badge ${o.severity}" title="${esc(o.utilities.join('、'))}">⚡ ${label}（约${fmt0(o.meters_affected)}户）</span>`;
+}
 
 async function loadRefineryPanel(market) {
   const prefix = market.toLowerCase();
@@ -222,6 +227,7 @@ async function loadRefineryPanel(market) {
       <td>${riskBadge(r.risk.heat_risk)}</td>
       <td>${riskBadge(r.risk.storm_flood_risk)}</td>
       <td>${riskBadge(r.risk.freeze_snow_risk)}</td>
+      ${market === 'US' ? `<td>${powerOutageBadge(r.power_outage)}</td>` : ''}
     </tr>`).join('');
 
   if (market === 'US') {
@@ -254,14 +260,17 @@ const FREEZE_LABEL = {high: '寒潮/积雪高风险', moderate: '寒潮/积雪�
 
 // 1-10 shutdown-risk score: weather forecast risk (0-9, 3pts per high category / 1pt per moderate)
 // blended with current WoodMac outage severity (0-5, scaled by % of nameplate CDU capacity down;
-// a flat 1.5 if only non-primary units are down), capped at 10.
+// a flat 1.5 if only non-primary units are down) and local grid-outage severity (0-4, from ODIN
+// county-level data — a proxy for infrastructure stress, not a direct read on refinery power),
+// capped at 10.
 function computeSeverityScore(r, outage, cduPct) {
   const wp = {high: 3, moderate: 1, low: 0};
   const weatherPts = (wp[r.risk.heat_risk] || 0) + (wp[r.risk.storm_flood_risk] || 0) + (wp[r.risk.freeze_snow_risk] || 0);
   let outagePts = 0;
   if (outage.cdu > 0) outagePts = Math.min(cduPct, 100) / 100 * 5;
   else if (outage.total > 0) outagePts = 1.5;
-  return Math.min(weatherPts + outagePts, 10);
+  const gridPts = {high: 4, moderate: 2.5, low: 1}[r.power_outage && r.power_outage.severity] || 0;
+  return Math.min(weatherPts + outagePts + gridPts, 10);
 }
 
 function severityBadgeClass(score) {
@@ -299,6 +308,9 @@ function renderRiskHeatmap(containerId, riskData, wmData) {
     if (FREEZE_LABEL[r.risk.freeze_snow_risk]) reasons.push(FREEZE_LABEL[r.risk.freeze_snow_risk]);
     if (outage.cdu > 0) reasons.push(`主装置停车${fmtKbd(outage.cdu)}千桶/日 (${cduPct >= 100 ? '≥100' : cduPct.toFixed(0)}%)`);
     else if (outage.total > 0) reasons.push(`非主装置停车${fmtKbd(outage.total)}千桶/日`);
+    if (r.power_outage && r.power_outage.meters_affected > 0) {
+      reasons.push(`⚡本县电网停电约${fmt0(r.power_outage.meters_affected)}户（${esc(r.power_outage.utilities.join('、'))}）`);
+    }
     return {r, score, reasons};
   })
     .filter(x => x.score >= 2)
@@ -696,12 +708,32 @@ function weatherBlockHtml(marketLabel, tabKey, riskData, wmData) {
     }
   }
 
+  // Grid power-outage capture (US only — ODIN county-level feed), broken out by region since
+  // this was added specifically to surface Midwest (PADD2) grid stress separately from Gulf Coast.
+  let gridLine = '';
+  const withOutage = refs.filter(r => r.power_outage && r.power_outage.meters_affected > 0);
+  if (withOutage.length) {
+    const byRegion = {};
+    withOutage.forEach(r => {
+      const key = r.region || '其他';
+      byRegion[key] = (byRegion[key] || 0) + r.power_outage.meters_affected;
+    });
+    const regionBreakdown = Object.entries(byRegion).sort((a, b) => b[1] - a[1])
+      .map(([region, meters]) => `${esc(region)} ${fmt0(meters)}户`).join('、');
+    const worstOutage = withOutage.slice().sort((a, b) => b.power_outage.meters_affected - a.power_outage.meters_affected)[0];
+    gridLine = `<b class="${withOutage.some(r=>r.power_outage.severity==='high')?'summary-flag':''}">${withOutage.length}</b> 座炼厂所在县当前有电网停电报告（按地区：${regionBreakdown}），` +
+      `最严重的是 <b>${esc(worstOutage.name)}</b>（约${fmt0(worstOutage.power_outage.meters_affected)}户，${esc(worstOutage.power_outage.utilities.join('、'))}）`;
+  } else if (refs.some(r => 'power_outage' in r)) {
+    gridLine = '监控范围内炼厂所在县暂无电网停电报告';
+  }
+
   return `<div class="summary-block">
     <h3>${marketLabel} <span class="goto" data-goto="${tabKey}">查看详情 →</span></h3>
     <ul>
       <li>监控 <b>${refs.length}</b> 座炼厂，其中 <b class="${totalHigh ? 'summary-flag' : ''}">${totalHigh}</b> 座至少命中一项未来7天天气高风险
         （高温 ${highHeat.length} / 雷暴洪水 ${highStorm.length} / 寒潮积雪 ${highFreeze.length}）。</li>
       ${droughtLine ? `<li>${droughtLine}。</li>` : ''}
+      ${gridLine ? `<li>⚡ ${gridLine}。</li>` : ''}
       ${capLine ? `<li>${capLine}。</li>` : ''}
       ${wmLine ? `<li>${wmLine}。</li>` : ''}
     </ul>
