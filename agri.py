@@ -6,6 +6,7 @@ investment advice. Weights/thresholds are documented inline so the reasoning is 
 """
 import json
 import os
+import time
 
 import yfinance as yf
 
@@ -15,11 +16,14 @@ import usda_sync
 
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
 _price_cache = {}
+_PRICE_CACHE_TTL = 900  # 15 min — matches data_sources.py's convention; without this, prices froze
+                         # at whatever was fetched on first request for the life of the process.
 
 
 def _price_snapshot(ticker):
-    if ticker in _price_cache:
-        return _price_cache[ticker]
+    hit = _price_cache.get(ticker)
+    if hit and time.time() - hit[0] < _PRICE_CACHE_TTL:
+        return hit[1]
     hist = yf.Ticker(ticker).history(period="1y", interval="1d")
     if hist.empty:
         return None
@@ -37,7 +41,7 @@ def _price_snapshot(ticker):
         "vs_ma100_pct": round((last / ma100 - 1) * 100, 2) if ma100 else None,
         "sparkline": sparkline,
     }
-    _price_cache[ticker] = out
+    _price_cache[ticker] = (time.time(), out)
     return out
 
 
