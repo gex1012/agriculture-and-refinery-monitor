@@ -125,7 +125,13 @@ def api_agri():
 def api_agri_sync():
     usda = usda_sync.sync(force=True)
     wasde = wasde_sync.sync(force=True)
-    return jsonify({"usda": usda, "wasde": wasde})
+    harvest = usda_sync.sync_harvest_history(force=True)
+    return jsonify({"usda": usda, "wasde": wasde, "harvest_history": harvest})
+
+
+@app.route("/api/usda_harvest_history")
+def api_usda_harvest_history():
+    return jsonify(usda_sync.sync_harvest_history())
 
 
 @app.route("/api/wasde")

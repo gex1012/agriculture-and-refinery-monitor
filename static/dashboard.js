@@ -529,16 +529,18 @@ function renderProgressCards(progressByCrop) {
   el.innerHTML = Object.entries(progressByCrop).map(([crop, stages]) => {
     const stageHtml = Object.entries(stages).map(([stage, s]) => {
       const label = STAGE_LABELS[stage] || stage;
-      const vsAvg = s.current_pct - s.avg_5yr_pct;
-      const vsAvgTxt = Math.abs(vsAvg) < 1 ? '与近5年均值持平'
+      const hasAvg = s.current_pct != null && s.avg_5yr_pct != null;
+      const vsAvg = hasAvg ? s.current_pct - s.avg_5yr_pct : null;
+      const vsAvgTxt = vsAvg == null ? '本周数据暂缺(NA)，无法比较'
+        : Math.abs(vsAvg) < 1 ? '与近5年均值持平'
         : (vsAvg > 0 ? `快于近5年均值 ${vsAvg.toFixed(0)} 个百分点` : `慢于近5年均值 ${Math.abs(vsAvg).toFixed(0)} 个百分点`);
       return `<div class="progress-stage">
-        <div class="lbl"><span>${esc(label)} (${esc(stage)})</span><b>${s.current_pct.toFixed(0)}%</b></div>
+        <div class="lbl"><span>${esc(label)} (${esc(stage)})</span><b>${fmt0(s.current_pct)}%</b></div>
         <div class="progress-track">
-          <div class="progress-fill" style="width:${s.current_pct}%"></div>
-          <div class="progress-avgmark" style="left:${s.avg_5yr_pct}%" title="近5年均值 ${s.avg_5yr_pct.toFixed(0)}%"></div>
+          <div class="progress-fill" style="width:${s.current_pct ?? 0}%"></div>
+          <div class="progress-avgmark" style="left:${s.avg_5yr_pct ?? 0}%" title="近5年均值 ${fmt0(s.avg_5yr_pct)}%"></div>
         </div>
-        <div class="muted" style="font-size:11px;margin-top:2px">${vsAvgTxt}（近5年均值 ${s.avg_5yr_pct.toFixed(0)}% · 上周 ${s.week_ago_pct.toFixed(0)}%）</div>
+        <div class="muted" style="font-size:11px;margin-top:2px">${vsAvgTxt}（近5年均值 ${fmt0(s.avg_5yr_pct)}% · 上周 ${fmt0(s.week_ago_pct)}%）</div>
       </div>`;
     }).join('');
     return `<div class="progress-card"><h4>${esc(crop)}</h4>${stageHtml}</div>`;
@@ -564,6 +566,71 @@ function renderUsdaVizAnalyst(conditions, progressByCrop) {
     ${leaders.length ? `生长/收获进度明显快于近5年同期：<b>${leaders.join('、')}</b>；` : ''}
     ${laggards.length ? `明显慢于近5年同期：<b>${laggards.join('、')}</b>。` : (leaders.length ? '' : '整体生长节奏接近近5年均值，未见显著进度异常。')}
     下方图表为 USDA 原始客观数据（未做多空判断），交易建议见「子模块二」。</p>`;
+}
+
+const harvestChartInstances = {};
+function renderHarvestChart(crop, points) {
+  const canvasId = `harvest-chart-${crop.replace(/\s+/g, '-')}`;
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `<h4>${esc(crop)}</h4><canvas id="${canvasId}" height="160"></canvas>`;
+  document.getElementById('harvest-charts').appendChild(card);
+
+  const ctx = document.getElementById(canvasId).getContext('2d');
+  if (harvestChartInstances[crop]) harvestChartInstances[crop].destroy();
+  harvestChartInstances[crop] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: points.map(p => p.date),
+      datasets: [
+        {label: '本年度', data: points.map(p => p.current_pct), borderColor: '#58a6ff',
+         backgroundColor: 'rgba(88,166,255,.1)', borderWidth: 2, pointRadius: 2, spanGaps: true, tension: 0.15},
+        {label: '近5年均值', data: points.map(p => p.avg_5yr_pct), borderColor: '#8b949e',
+         borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, spanGaps: true, tension: 0.15},
+      ],
+    },
+    options: {
+      responsive: true,
+      interaction: {mode: 'index', intersect: false},
+      scales: {
+        x: {ticks: {color: '#8b949e', maxRotation: 45, minRotation: 45, font: {size: 10}}, grid: {display: false}},
+        y: {min: 0, max: 100, title: {display: true, text: '% 完成', color: '#8b949e'},
+            ticks: {color: '#8b949e'}, grid: {color: '#30363d'}},
+      },
+      plugins: {legend: {labels: {color: '#e6edf3', font: {size: 11}}}},
+    },
+  });
+}
+
+async function loadHarvestHistory() {
+  const res = await fetch('/api/usda_harvest_history');
+  const d = await res.json();
+  const history = d.history || {};
+  const crops = Object.keys(history);
+  document.getElementById('harvest-charts').innerHTML = '';
+
+  if (!crops.length) {
+    document.getElementById('harvest-analyst').innerHTML = '<span class="muted">本季暂无作物进入收获阶段，等有 Harvested 数据后会自动出现在这里。</span>';
+    document.getElementById('harvest-note').innerText = '';
+    return;
+  }
+
+  const latestGaps = crops.map(crop => {
+    const pts = history[crop];
+    const last = pts[pts.length - 1];
+    return {crop, diff: last.current_pct - last.avg_5yr_pct, current: last.current_pct, date: last.date};
+  }).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+  const biggest = latestGaps[0];
+
+  document.getElementById('harvest-analyst').innerHTML = `<h3>收获进度解读（截至 ${esc(biggest.date)}）</h3><p>
+    目前已进入收获统计的作物：<b>${crops.map(c=>esc(c)).join('、')}</b>（玉米/大豆通常9月中下旬才开始，暂未纳入）。
+    进度与近5年均值差距最大的是 <b>${esc(biggest.crop)}</b>（本年度${fmt0(biggest.current)}%，${biggest.diff>=0?'快于':'慢于'}均值${fmt0(Math.abs(biggest.diff))}个百分点），
+    收获推进${biggest.diff>=0?'偏快':'偏慢'}通常意味着新粮供应${biggest.diff>=0?'提前':'延后'}上市，会影响近月合约的基差与仓储成本。</p>`;
+
+  crops.forEach(crop => renderHarvestChart(crop, history[crop]));
+
+  document.getElementById('harvest-note').innerText =
+    '数据来源：USDA NASS《Crop Progress》历年周报（release.nass.usda.gov，免key），自动抓取本季度已发布的全部周报并提取各作物"Harvested"（收获）阶段的进度，逐周累积——不是单周快照。首次同步需要拉取本季全部周报，耗时较长；之后每次只增量抓取新发布的周报，3天内不重复拉取。"近5年均值"取自每期报告自带的历史均值列，随日历周变化，不是单一固定值。';
 }
 
 async function loadAgri() {
@@ -825,6 +892,7 @@ async function loadAll() {
     loadKaub(),
     loadAgri(),
     loadWasde(),
+    loadHarvestHistory(),
   ]);
   renderRiskHeatmap('us-heatmap', STATE.usRisk, STATE.usWm);
   renderRiskHeatmap('eu-heatmap', STATE.euRisk, STATE.euWm);
@@ -838,7 +906,7 @@ document.getElementById('refreshBtn').addEventListener('click', () => {
 document.getElementById('syncUsdaBtn').addEventListener('click', async () => {
   document.getElementById('syncUsdaBtn').innerText = '⏳ 同步中…';
   await fetch('/api/agri/sync', {method: 'POST'});
-  await Promise.allSettled([loadAgri(), loadWasde()]);
+  await Promise.allSettled([loadAgri(), loadWasde(), loadHarvestHistory()]);
   renderSummary();
   document.getElementById('syncUsdaBtn').innerText = '📥 强制同步 USDA+WASDE';
 });

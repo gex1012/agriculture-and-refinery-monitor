@@ -69,14 +69,21 @@ _ROW_RE = re.compile(r"^\s*([A-Za-z0-9][A-Za-z0-9 .]+?)\.{2,}:\s*(.+?)\s*$")
 
 
 def _row_numbers(line):
+    """'(NA)' ('not available', printed when a column has no data — e.g. right after a reporting
+    gap) must consume its own column position like '-' does, or every later value in the row
+    shifts left. That shift previously caused a state's row (whichever ended up misaligned into
+    the right column count) to be mistaken for the 'N States' national aggregate — a real
+    mis-parse, not just a missing data point; confirmed against a report where it silently
+    produced a *decreasing* week-over-week harvest percentage, which can't happen for a
+    cumulative progress metric."""
     m = _ROW_RE.match(line)
     if not m:
         return None
     label, rest = m.group(1).strip(), m.group(2).strip()
-    nums = re.findall(r"-(?!\d)|\d+\.?\d*", rest)
-    if not nums:
+    tokens = re.findall(r"\(NA\)|-(?!\d)|\d+\.?\d*", rest)
+    if not tokens:
         return None
-    nums = [0.0 if x == "-" else float(x) for x in nums]
+    nums = [None if t == "(NA)" else (0.0 if t == "-" else float(t)) for t in tokens]
     return label, nums
 
 
@@ -169,23 +176,27 @@ def _split_national(rows):
     return state_rows, national, prev_week, prev_year
 
 
+def _sum_or_none(*vals):
+    return None if any(v is None for v in vals) else round(sum(vals), 1)
+
+
 def _parse_condition_rows(rows):
-    """Rows: (label, [very_poor, poor, fair, good, excellent])."""
+    """Rows: (label, [very_poor, poor, fair, good, excellent]). Any of these can be None (a '(NA)'
+    cell in the source), so nothing here may assume they're numeric — see _row_numbers."""
     rows = [(l, n) for l, n in rows if len(n) >= 5]
     state_rows, national, prev_week, prev_year = _split_national(rows)
     if national is None:
         return None
     label, nums = national
-    good_excellent = round(nums[3] + nums[4], 1)
-    out = {"national_label": label, "good_excellent_pct": good_excellent,
+    out = {"national_label": label, "good_excellent_pct": _sum_or_none(nums[3], nums[4]),
            "very_poor_pct": nums[0], "poor_pct": nums[1], "fair_pct": nums[2],
            "good_pct": nums[3], "excellent_pct": nums[4],
            "by_state": [{"label": l, "very_poor": n[0], "poor": n[1], "fair": n[2],
                         "good": n[3], "excellent": n[4]} for l, n in state_rows]}
     if prev_week and len(prev_week) >= 5:
-        out["good_excellent_pct_prev_week"] = round(prev_week[3] + prev_week[4], 1)
+        out["good_excellent_pct_prev_week"] = _sum_or_none(prev_week[3], prev_week[4])
     if prev_year and len(prev_year) >= 5:
-        out["good_excellent_pct_prev_year"] = round(prev_year[3] + prev_year[4], 1)
+        out["good_excellent_pct_prev_year"] = _sum_or_none(prev_year[3], prev_year[4])
     return out
 
 
@@ -197,6 +208,81 @@ def _parse_progress_rows(rows):
         return None
     label, nums = national
     return {"national_label": label, "current_pct": nums[2], "avg_5yr_pct": nums[3], "week_ago_pct": nums[1]}
+
+
+HARVEST_HISTORY_CACHE_FILE = os.path.join(CACHE_DIR, "usda_harvest_history.json")
+HARVEST_HISTORY_MAX_AGE_DAYS = 3
+
+
+def _scan_valid_report_numbers():
+    """Cheap HEAD-only pass to find every report number published so far this season (1-52)."""
+    year2 = datetime.date.today().strftime("%y")
+    found = []
+    for n in range(1, 53):
+        r = requests.head(f"https://release.nass.usda.gov/reports/prog{n:02d}{year2}.txt", timeout=15)
+        if r.status_code == 200:
+            found.append(n)
+    return found
+
+
+def _fetch_report_text(n):
+    year2 = datetime.date.today().strftime("%y")
+    r = requests.get(f"https://release.nass.usda.gov/reports/prog{n:02d}{year2}.txt", timeout=20)
+    return r.text if r.status_code == 200 else None
+
+
+def sync_harvest_history(force=False):
+    """Builds a season-to-date time series of '<Crop> Harvested' progress (current year % vs the
+    5-year average for that same calendar week, both published directly in each week's report) by
+    fetching every report released so far this year. Incremental: only newly-published report
+    numbers are fetched on repeat calls, everything already parsed is cached."""
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    cached = {"processed_reports": [], "history": {}}
+    if os.path.exists(HARVEST_HISTORY_CACHE_FILE):
+        with open(HARVEST_HISTORY_CACHE_FILE, encoding="utf-8") as f:
+            cached = json.load(f)
+        age = datetime.datetime.now().timestamp() - os.path.getmtime(HARVEST_HISTORY_CACHE_FILE)
+        if not force and age < HARVEST_HISTORY_MAX_AGE_DAYS * 86400:
+            return cached
+
+    all_numbers = _scan_valid_report_numbers()
+    already = set(cached.get("processed_reports", []))
+    new_numbers = [n for n in all_numbers if n not in already]
+
+    history = cached.get("history", {})
+    for n in new_numbers:
+        text = _fetch_report_text(n)
+        if not text:
+            continue
+        date_m = re.search(r"Released (\w+ \d+, \d{4})", text)
+        released = date_m.group(1) if date_m else None
+        if not released:
+            continue
+        blocks = _all_progress_blocks(text)
+        for (crop, stage), rows in blocks.items():
+            if stage != "Harvested":
+                continue
+            parsed = _parse_progress_rows(rows)
+            if not parsed:
+                continue
+            history.setdefault(crop, []).append({
+                "report_id": f"prog{n:02d}{datetime.date.today().strftime('%y')}",
+                "date": released,
+                "current_pct": parsed["current_pct"],
+                "avg_5yr_pct": parsed["avg_5yr_pct"],
+            })
+
+    for crop in history:
+        history[crop] = sorted(
+            {(pt["report_id"]): pt for pt in history[crop]}.values(),
+            key=lambda pt: pt["report_id"],
+        )
+
+    result = {"processed_reports": sorted(already | set(new_numbers)),
+              "synced_at": datetime.datetime.now().isoformat(timespec="seconds"), "history": history}
+    with open(HARVEST_HISTORY_CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+    return result
 
 
 def sync(force=False):
