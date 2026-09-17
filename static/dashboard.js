@@ -622,8 +622,9 @@ async function loadHarvestHistory() {
   }).sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
   const biggest = latestGaps[0];
 
+  const pendingMajors = ['Corn', 'Soybeans'].filter(c => !crops.includes(c));
   document.getElementById('harvest-analyst').innerHTML = `<h3>收获进度解读（截至 ${esc(biggest.date)}）</h3><p>
-    目前已进入收获统计的作物：<b>${crops.map(c=>esc(c)).join('、')}</b>（玉米/大豆通常9月中下旬才开始，暂未纳入）。
+    目前已进入收获统计的作物：<b>${crops.map(c=>esc(c)).join('、')}</b>${pendingMajors.length ? `（${pendingMajors.join('/')}通常9月中下旬才开始，暂未纳入）` : ''}。
     进度与近5年均值差距最大的是 <b>${esc(biggest.crop)}</b>（本年度${fmt0(biggest.current)}%，${biggest.diff>=0?'快于':'慢于'}均值${fmt0(Math.abs(biggest.diff))}个百分点），
     收获推进${biggest.diff>=0?'偏快':'偏慢'}通常意味着新粮供应${biggest.diff>=0?'提前':'延后'}上市，会影响近月合约的基差与仓储成本。</p>`;
 
