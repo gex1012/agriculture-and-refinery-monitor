@@ -10,7 +10,11 @@ import datetime
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
+
 import requests
+
+import github_persist
 
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
 CACHE_FILE = os.path.join(CACHE_DIR, "usda_crop_progress.json")
@@ -215,32 +219,56 @@ HARVEST_HISTORY_MAX_AGE_DAYS = 3
 
 
 def _scan_valid_report_numbers():
-    """Cheap HEAD-only pass to find every report number published so far this season (1-52)."""
+    """HEAD-only pass to find every report number published so far this season (1-52). Parallel —
+    sequential HEAD checks across 52 candidates was itself adding several seconds."""
     year2 = datetime.date.today().strftime("%y")
-    found = []
-    for n in range(1, 53):
-        r = requests.head(f"https://release.nass.usda.gov/reports/prog{n:02d}{year2}.txt", timeout=15)
-        if r.status_code == 200:
-            found.append(n)
-    return found
+
+    def check(n):
+        try:
+            r = requests.head(f"https://release.nass.usda.gov/reports/prog{n:02d}{year2}.txt", timeout=15)
+            return n if r.status_code == 200 else None
+        except requests.RequestException:
+            return None
+
+    with ThreadPoolExecutor(max_workers=16) as ex:
+        results = list(ex.map(check, range(1, 53)))
+    return sorted(n for n in results if n)
 
 
 def _fetch_report_text(n):
     year2 = datetime.date.today().strftime("%y")
-    r = requests.get(f"https://release.nass.usda.gov/reports/prog{n:02d}{year2}.txt", timeout=20)
-    return r.text if r.status_code == 200 else None
+    try:
+        r = requests.get(f"https://release.nass.usda.gov/reports/prog{n:02d}{year2}.txt", timeout=20)
+        return n, (r.text if r.status_code == 200 else None)
+    except requests.RequestException:
+        return n, None
 
 
 def sync_harvest_history(force=False):
     """Builds a season-to-date time series of '<Crop> Harvested' progress (current year % vs the
     5-year average for that same calendar week, both published directly in each week's report) by
     fetching every report released so far this year. Incremental: only newly-published report
-    numbers are fetched on repeat calls, everything already parsed is cached."""
+    numbers are fetched on repeat calls, everything already parsed is cached. Report fetches run in
+    parallel — sequential fetching of a full season's worth of reports (~20-30 on a cold cache) took
+    80s+, well past most reverse-proxy request timeouts (Render's included), which silently broke
+    this on first load after every cold start. Also backed up to GitHub (github_persist) for the
+    same reason WoodMac data is: Render's free-tier disk doesn't survive a sleep/wake cycle, so
+    without this a cold start would eat the full re-fetch cost on whichever user's request lands
+    first, or a partial/timed-out fetch could get cached as if it were complete data — pulling the
+    last known-good synced copy first avoids both."""
     os.makedirs(CACHE_DIR, exist_ok=True)
     cached = {"processed_reports": [], "history": {}}
     if os.path.exists(HARVEST_HISTORY_CACHE_FILE):
         with open(HARVEST_HISTORY_CACHE_FILE, encoding="utf-8") as f:
             cached = json.load(f)
+    elif not force:
+        remote = github_persist.pull_json("usda_harvest_history.json")
+        if remote:
+            cached = json.loads(remote)
+            with open(HARVEST_HISTORY_CACHE_FILE, "w", encoding="utf-8") as f:
+                json.dump(cached, f, ensure_ascii=False, indent=2)
+
+    if os.path.exists(HARVEST_HISTORY_CACHE_FILE):
         age = datetime.datetime.now().timestamp() - os.path.getmtime(HARVEST_HISTORY_CACHE_FILE)
         if not force and age < HARVEST_HISTORY_MAX_AGE_DAYS * 86400:
             return cached
@@ -250,27 +278,29 @@ def sync_harvest_history(force=False):
     new_numbers = [n for n in all_numbers if n not in already]
 
     history = cached.get("history", {})
-    for n in new_numbers:
-        text = _fetch_report_text(n)
-        if not text:
-            continue
-        date_m = re.search(r"Released (\w+ \d+, \d{4})", text)
-        released = date_m.group(1) if date_m else None
-        if not released:
-            continue
-        blocks = _all_progress_blocks(text)
-        for (crop, stage), rows in blocks.items():
-            if stage != "Harvested":
+    if new_numbers:
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            fetched = list(ex.map(_fetch_report_text, new_numbers))
+        for n, text in fetched:
+            if not text:
                 continue
-            parsed = _parse_progress_rows(rows)
-            if not parsed:
+            date_m = re.search(r"Released (\w+ \d+, \d{4})", text)
+            released = date_m.group(1) if date_m else None
+            if not released:
                 continue
-            history.setdefault(crop, []).append({
-                "report_id": f"prog{n:02d}{datetime.date.today().strftime('%y')}",
-                "date": released,
-                "current_pct": parsed["current_pct"],
-                "avg_5yr_pct": parsed["avg_5yr_pct"],
-            })
+            blocks = _all_progress_blocks(text)
+            for (crop, stage), rows in blocks.items():
+                if stage != "Harvested":
+                    continue
+                parsed = _parse_progress_rows(rows)
+                if not parsed:
+                    continue
+                history.setdefault(crop, []).append({
+                    "report_id": f"prog{n:02d}{datetime.date.today().strftime('%y')}",
+                    "date": released,
+                    "current_pct": parsed["current_pct"],
+                    "avg_5yr_pct": parsed["avg_5yr_pct"],
+                })
 
     for crop in history:
         history[crop] = sorted(
@@ -282,6 +312,12 @@ def sync_harvest_history(force=False):
               "synced_at": datetime.datetime.now().isoformat(timespec="seconds"), "history": history}
     with open(HARVEST_HISTORY_CACHE_FILE, "w", encoding="utf-8") as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
+    if new_numbers:
+        github_persist.push_json(
+            "usda_harvest_history.json",
+            json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8"),
+            f"Update USDA harvest history: reports {new_numbers}",
+        )
     return result
 
 
