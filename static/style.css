@@ -62,6 +62,8 @@ td.num{text-align:right;font-variant-numeric:tabular-nums}
 .badge.steady{background:rgba(139,148,158,.15);color:var(--muted)}
 
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin:14px 0}
+#harvest-charts{grid-template-columns:repeat(2,1fr)}
+@media (max-width:700px){#harvest-charts{grid-template-columns:1fr}}
 .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
 .card .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .card h4{margin:0;font-size:14.5px}
