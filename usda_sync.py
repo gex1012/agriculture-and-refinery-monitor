@@ -216,12 +216,15 @@ def _parse_progress_rows(rows):
 
 HARVEST_HISTORY_CACHE_FILE = os.path.join(CACHE_DIR, "usda_harvest_history.json")
 HARVEST_HISTORY_MAX_AGE_DAYS = 3
+HARVEST_PRIOR_YEAR_CACHE_FILE = os.path.join(CACHE_DIR, "usda_harvest_prior_year.json")
+HARVEST_PRIOR_YEAR_MAX_AGE_DAYS = 30
 
 
-def _scan_valid_report_numbers():
-    """HEAD-only pass to find every report number published so far this season (1-52). Parallel —
-    sequential HEAD checks across 52 candidates was itself adding several seconds."""
-    year2 = datetime.date.today().strftime("%y")
+def _scan_valid_report_numbers(year=None):
+    """HEAD-only pass to find every report number published in a given year (1-52; defaults to the
+    current year). Parallel — sequential HEAD checks across 52 candidates was itself adding several
+    seconds."""
+    year2 = f"{year % 100:02d}" if year else datetime.date.today().strftime("%y")
 
     def check(n):
         try:
@@ -235,8 +238,8 @@ def _scan_valid_report_numbers():
     return sorted(n for n in results if n)
 
 
-def _fetch_report_text(n):
-    year2 = datetime.date.today().strftime("%y")
+def _fetch_report_text(n, year=None):
+    year2 = f"{year % 100:02d}" if year else datetime.date.today().strftime("%y")
     try:
         r = requests.get(f"https://release.nass.usda.gov/reports/prog{n:02d}{year2}.txt", timeout=20)
         return n, (r.text if r.status_code == 200 else None)
@@ -244,10 +247,88 @@ def _fetch_report_text(n):
         return n, None
 
 
+def _week_of(date_str):
+    """ISO week number for a 'Month D, YYYY' date string — used to line up this year's and last
+    year's harvest curves on a shared calendar-week x-axis (raw calendar dates differ by year, but
+    week-of-year is directly comparable)."""
+    try:
+        return datetime.datetime.strptime(date_str, "%B %d, %Y").isocalendar()[1]
+    except ValueError:
+        return None
+
+
+def _sync_prior_year_harvest_curve():
+    """Full-season 'Harvested' curve for last calendar year, per crop — used as a reference line so
+    this year's (necessarily partial, so-far-published-only) curve can be seen against a complete
+    season shape instead of floating alone at the left edge of the chart. Last year's season is
+    over, so this doesn't change week to week — cached for 30 days, and backed up to GitHub the
+    same way the current-year cache is, so a cold Render start doesn't redo a ~50-report scan+fetch
+    just to rebuild data that will come out identical."""
+    os.makedirs(CACHE_DIR, exist_ok=True)
+    prior_year = datetime.date.today().year - 1
+
+    cached = None
+    if os.path.exists(HARVEST_PRIOR_YEAR_CACHE_FILE):
+        with open(HARVEST_PRIOR_YEAR_CACHE_FILE, encoding="utf-8") as f:
+            cached = json.load(f)
+    if cached is None:
+        remote = github_persist.pull_json("usda_harvest_prior_year.json")
+        if remote:
+            cached = json.loads(remote)
+            with open(HARVEST_PRIOR_YEAR_CACHE_FILE, "w", encoding="utf-8") as f:
+                json.dump(cached, f, ensure_ascii=False, indent=2)
+
+    if cached and cached.get("year") == prior_year:
+        age = datetime.datetime.now().timestamp() - os.path.getmtime(HARVEST_PRIOR_YEAR_CACHE_FILE)
+        if age < HARVEST_PRIOR_YEAR_MAX_AGE_DAYS * 86400:
+            return cached
+
+    numbers = _scan_valid_report_numbers(prior_year)
+    history = {}
+    if numbers:
+        with ThreadPoolExecutor(max_workers=8) as ex:
+            fetched = list(ex.map(lambda n: _fetch_report_text(n, prior_year), numbers))
+        for n, text in fetched:
+            if not text:
+                continue
+            date_m = re.search(r"Released (\w+ \d+, \d{4})", text)
+            released = date_m.group(1) if date_m else None
+            if not released:
+                continue
+            blocks = _all_progress_blocks(text)
+            for (crop, stage), rows in blocks.items():
+                if stage != "Harvested":
+                    continue
+                parsed = _parse_progress_rows(rows)
+                if not parsed or parsed["current_pct"] is None:
+                    continue
+                history.setdefault(crop, []).append(
+                    {"date": released, "week": _week_of(released), "pct": parsed["current_pct"]})
+
+    for crop in history:
+        history[crop] = sorted({pt["date"]: pt for pt in history[crop]}.values(),
+                                key=lambda pt: (pt["week"] is None, pt["week"]))
+
+    result = {"year": prior_year, "synced_at": datetime.datetime.now().isoformat(timespec="seconds"),
+              "history": history}
+    with open(HARVEST_PRIOR_YEAR_CACHE_FILE, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
+    if history:
+        github_persist.push_json(
+            "usda_harvest_prior_year.json",
+            json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8"),
+            f"Cache {prior_year} USDA harvest curve (reference line)",
+        )
+    return result
+
+
 def sync_harvest_history(force=False):
     """Builds a season-to-date time series of '<Crop> Harvested' progress (current year % vs the
     5-year average for that same calendar week, both published directly in each week's report) by
-    fetching every report released so far this year. Incremental: only newly-published report
+    fetching every report released so far this year, plus a full prior-year reference curve (see
+    _sync_prior_year_harvest_curve) so this year's so-far-partial data can be read against a
+    complete season shape instead of floating alone — a user reviewing the chart otherwise has no
+    sense of how far into the season "today" actually is. Incremental: only newly-published report
     numbers are fetched on repeat calls, everything already parsed is cached. Report fetches run in
     parallel — sequential fetching of a full season's worth of reports (~20-30 on a cold cache) took
     80s+, well past most reverse-proxy request timeouts (Render's included), which silently broke
@@ -268,10 +349,12 @@ def sync_harvest_history(force=False):
             with open(HARVEST_HISTORY_CACHE_FILE, "w", encoding="utf-8") as f:
                 json.dump(cached, f, ensure_ascii=False, indent=2)
 
+    prior_year_data = _sync_prior_year_harvest_curve()
+
     if os.path.exists(HARVEST_HISTORY_CACHE_FILE):
         age = datetime.datetime.now().timestamp() - os.path.getmtime(HARVEST_HISTORY_CACHE_FILE)
         if not force and age < HARVEST_HISTORY_MAX_AGE_DAYS * 86400:
-            return cached
+            return _with_prior_year(cached, prior_year_data)
 
     all_numbers = _scan_valid_report_numbers()
     already = set(cached.get("processed_reports", []))
@@ -298,6 +381,7 @@ def sync_harvest_history(force=False):
                 history.setdefault(crop, []).append({
                     "report_id": f"prog{n:02d}{datetime.date.today().strftime('%y')}",
                     "date": released,
+                    "week": _week_of(released),
                     "current_pct": parsed["current_pct"],
                     "avg_5yr_pct": parsed["avg_5yr_pct"],
                 })
@@ -318,7 +402,14 @@ def sync_harvest_history(force=False):
             json.dumps(result, ensure_ascii=False, indent=2).encode("utf-8"),
             f"Update USDA harvest history: reports {new_numbers}",
         )
-    return result
+    return _with_prior_year(result, prior_year_data)
+
+
+def _with_prior_year(result, prior_year_data):
+    out = dict(result)
+    out["prior_year"] = prior_year_data.get("year")
+    out["prior_year_history"] = prior_year_data.get("history", {})
+    return out
 
 
 def sync(force=False):

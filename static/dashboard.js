@@ -569,24 +569,38 @@ function renderUsdaVizAnalyst(conditions, progressByCrop) {
 }
 
 const harvestChartInstances = {};
-function renderHarvestChart(crop, points) {
+function renderHarvestChart(crop, points, priorPoints, priorYear) {
   const canvasId = `harvest-chart-${crop.replace(/\s+/g, '-')}`;
   const card = document.createElement('div');
   card.className = 'card';
   card.innerHTML = `<h4>${esc(crop)}</h4><canvas id="${canvasId}" height="160"></canvas>`;
   document.getElementById('harvest-charts').appendChild(card);
 
+  // Align this year's (necessarily partial, only-published-so-far) points and last year's full
+  // season curve on a shared calendar-week x-axis, so the chart shows the whole harvest window
+  // (start -> ~100%) for context, not just the handful of weeks reported so far this year.
+  const currentByWeek = {};
+  points.forEach(p => { if (p.week != null) currentByWeek[p.week] = p; });
+  const priorByWeek = {};
+  (priorPoints || []).forEach(p => { if (p.week != null) priorByWeek[p.week] = p; });
+  const allWeeks = Array.from(new Set([...Object.keys(currentByWeek), ...Object.keys(priorByWeek)].map(Number)))
+    .sort((a, b) => a - b);
+  const labels = allWeeks.map(w => `第${w}周`);
+
   const ctx = document.getElementById(canvasId).getContext('2d');
   if (harvestChartInstances[crop]) harvestChartInstances[crop].destroy();
   harvestChartInstances[crop] = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: points.map(p => p.date),
+      labels,
       datasets: [
-        {label: '本年度', data: points.map(p => p.current_pct), borderColor: '#58a6ff',
-         backgroundColor: 'rgba(88,166,255,.1)', borderWidth: 2, pointRadius: 2, spanGaps: true, tension: 0.15},
-        {label: '近5年均值', data: points.map(p => p.avg_5yr_pct), borderColor: '#8b949e',
-         borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, spanGaps: true, tension: 0.15},
+        {label: '本年度', data: allWeeks.map(w => currentByWeek[w] ? currentByWeek[w].current_pct : null),
+         borderColor: '#58a6ff', backgroundColor: 'rgba(88,166,255,.1)', borderWidth: 2.5,
+         pointRadius: 2, spanGaps: true, tension: 0.15},
+        {label: '近5年均值', data: allWeeks.map(w => currentByWeek[w] ? currentByWeek[w].avg_5yr_pct : null),
+         borderColor: '#8b949e', borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, spanGaps: true, tension: 0.15},
+        {label: `去年同期全程(${priorYear || ''})`, data: allWeeks.map(w => priorByWeek[w] ? priorByWeek[w].pct : null),
+         borderColor: '#3fb950', borderDash: [2, 3], borderWidth: 1.5, pointRadius: 0, spanGaps: true, tension: 0.15},
       ],
     },
     options: {
@@ -606,6 +620,8 @@ async function loadHarvestHistory() {
   const res = await fetch('/api/usda_harvest_history');
   const d = await res.json();
   const history = d.history || {};
+  const priorHistory = d.prior_year_history || {};
+  const priorYear = d.prior_year;
   const crops = Object.keys(history);
   document.getElementById('harvest-charts').innerHTML = '';
 
@@ -628,10 +644,10 @@ async function loadHarvestHistory() {
     进度与近5年均值差距最大的是 <b>${esc(biggest.crop)}</b>（本年度${fmt0(biggest.current)}%，${biggest.diff>=0?'快于':'慢于'}均值${fmt0(Math.abs(biggest.diff))}个百分点），
     收获推进${biggest.diff>=0?'偏快':'偏慢'}通常意味着新粮供应${biggest.diff>=0?'提前':'延后'}上市，会影响近月合约的基差与仓储成本。</p>`;
 
-  crops.forEach(crop => renderHarvestChart(crop, history[crop]));
+  crops.forEach(crop => renderHarvestChart(crop, history[crop], priorHistory[crop] || [], priorYear));
 
   document.getElementById('harvest-note').innerText =
-    '数据来源：USDA NASS《Crop Progress》历年周报（release.nass.usda.gov，免key），自动抓取本季度已发布的全部周报并提取各作物"Harvested"（收获）阶段的进度，逐周累积——不是单周快照。首次同步需要拉取本季全部周报，耗时较长；之后每次只增量抓取新发布的周报，3天内不重复拉取。"近5年均值"取自每期报告自带的历史均值列，随日历周变化，不是单一固定值。';
+    `数据来源：USDA NASS《Crop Progress》历年周报（release.nass.usda.gov，免key），自动抓取本季度已发布的全部周报并提取各作物"Harvested"（收获）阶段的进度，逐周累积——不是单周快照。首次同步需要拉取本季全部周报，耗时较长；之后每次只增量抓取新发布的周报，3天内不重复拉取。"近5年均值"取自每期报告自带的历史均值列，随日历周变化，不是单一固定值。绿色虚线为${priorYear || '去年'}同一作物的完整收获季曲线（按日历周对齐），用于展示今年数据在整个收获季中所处的位置，而不只是孤立的最近几周。`;
 }
 
 async function loadAgri() {
