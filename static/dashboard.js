@@ -437,14 +437,17 @@ async function loadKaub() {
     <div class="kpi"><div class="n" style="color:${belowLow?'var(--red)':'var(--fg)'}">${fmt0(d.current_level_cm)} cm</div><div class="l">当前实测水位（Pegelonline）</div></div>
     <div class="kpi"><div class="n">${d.low_water_threshold_cm} cm</div><div class="l">枯水关口阈值</div></div>
     <div class="kpi"><div class="n">${d.forecast_days_below_low_water}</div><div class="l">未来展望期内预计低于关口的天数</div></div>
-    <div class="kpi"><div class="n">±${fmt1(d.model_mae_cm)} cm</div><div class="l">模型近${d.calibration ? d.calibration.n_days : '—'}天平均误差（校准前 ±${d.calibration ? fmt1(d.calibration.mae_official_cm) : '—'} cm）</div></div>
+    ${d.near_term_peak ? `<div class="kpi"><div class="n">${fmt0(d.near_term_peak.level_cm)} cm</div><div class="l">未来两周预测峰值（${esc(d.near_term_peak.date)}，25–75%区间 ${fmt0(d.near_term_peak.p25_cm)}–${fmt0(d.near_term_peak.p75_cm)} cm）</div></div>` : ''}
   `;
 
   const labels = d.series.map(r => r.date);
   const actual = d.series.map(r => r.level_actual_cm);
-  const modeled = d.series.map(r => r.level_modeled_cm);
+  const official = d.series.map(r => r.level_official_forecast_cm);
+  const modeled = d.series.map(r => r.level_official_forecast_cm != null ? null : r.level_modeled_cm);
+  const p25 = d.series.map(r => r.level_p25_cm);
+  const p75 = d.series.map(r => r.level_p75_cm);
   const threshold = d.series.map(() => d.low_water_threshold_cm);
-  const allLevels = [...actual, ...modeled].filter(v => v != null);
+  const allLevels = [...actual, ...modeled, ...official, ...p25].filter(v => v != null);
   const yMin = Math.floor(Math.min(0, ...allLevels) / 10) * 10;
 
   const ctx = document.getElementById('kaubChart').getContext('2d');
@@ -455,31 +458,42 @@ async function loadKaub() {
       labels,
       datasets: [
         {label: '实测水位 (cm)', data: actual, borderColor: '#58a6ff', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 2, spanGaps: true},
-        {label: '模型估算水位 (cm)', data: modeled, borderColor: '#d29922', backgroundColor: 'rgba(210,153,34,.08)', pointRadius: 0, borderWidth: 1.5, fill: false},
+        {label: 'BfG 官方预报 (cm)', data: official, borderColor: '#3fb950', backgroundColor: '#3fb950', pointRadius: 2.5, borderWidth: 2},
+        {label: '模型预测·集合中位数 (cm)', data: modeled, borderColor: '#d29922', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 1.5},
+        {label: '25–75% 区间', data: p25, borderColor: 'transparent', backgroundColor: 'transparent', pointRadius: 0, borderWidth: 0},
+        {label: '25–75% 区间', data: p75, borderColor: 'transparent', backgroundColor: 'rgba(210,153,34,.18)', pointRadius: 0, borderWidth: 0, fill: '-1'},
         {label: '枯水阈值 78cm', data: threshold, borderColor: '#f85149', borderDash: [6,4], pointRadius: 0, borderWidth: 1},
       ],
     },
     options: {
       responsive: true,
       interaction: {mode: 'index', intersect: false},
+      plugins: {
+        legend: {labels: {color: '#e6edf3', filter: (item) => item.datasetIndex !== 3}},
+      },
       scales: {
         x: {ticks: {maxTicksLimit: 14, color: '#8b949e'}, grid: {color: '#30363d'}},
         y: {min: yMin, title: {display: true, text: 'cm', color: '#8b949e'}, ticks: {color: '#8b949e'}, grid: {color: '#30363d'}},
       },
-      plugins: {legend: {labels: {color: '#e6edf3'}}},
     },
   });
 
   const forecast = d.series.filter(r => r.is_forecast);
   const recovery = forecast.find(r => r.level_modeled_cm > d.low_water_threshold_cm);
+  const pk = d.near_term_peak;
+  const gc = d.glofas_correction || {};
+  const peakNote = pk
+    ? `<p>未来两周：BfG 官方预报到 ${esc((d.official_forecast || {}).until || '—')} 水位基本持平；之后受流域降雨影响，预计约 <b>${esc(pk.date)}</b> 前后小幅回升至 <b>${fmt0(pk.level_cm)}cm</b>（25–75% 区间 ${fmt0(pk.p25_cm)}–${fmt0(pk.p75_cm)}cm），${pk.p75_cm != null && pk.p75_cm < d.low_water_threshold_cm ? '即便偏湿情景也仍低于枯水关口' : '偏湿情景下有机会接近关口'}。
+       GloFAS 原始流量预测近30天平均高估 ${fmt0((gc.ratio - 1) * 100)}%，涨水时实测只体现了它约 ${fmt0(gc.k * 100)}% 的涨幅，模型已按此修正。</p>`
+    : '';
   const breachNote = belowLow
     ? `当前实测水位 <b>${fmt0(d.current_level_cm)}cm</b>，<b>已低于</b> ${d.low_water_threshold_cm}cm 枯水关口，内河驳船已需减载运营。${recovery
         ? `模型显示约 <b>${recovery.date}</b> 前后随来水增加首次回到关口以上（${fmt0(recovery.level_modeled_cm)}cm），但展望期内仍有 <b>${d.forecast_days_below_low_water}</b> 天处于关口以下，`
         : `展望期内模型未显示回到关口以上，`}莱茵河沿岸炼厂/化工厂原料及产品运输成本面临持续上行压力（历史参考：2018年、2022年枯水导致驳船附加费大幅上涨）。`
     : d.first_low_water_breach
     ? `模型显示水位预计将于 <b>${d.first_low_water_breach}</b> 前后跌破枯水阈值，展望期内共有 <b>${d.forecast_days_below_low_water}</b> 天低于该关口——若成真，内河驳船需减载运营，莱茵河沿岸炼厂/化工厂原料及产品运输成本可能上升（历史参考：2018年、2022年枯水导致驳船附加费大幅上涨）。`
-    : `展望期内模型未显示水位跌破枯水阈值（模型近期平均误差 ±${fmt1(d.model_mae_cm)}cm），建议结合实测水位持续跟踪，不作为唯一决策依据。`;
-  document.getElementById('kaub-analyst').innerHTML = `<h3>分析师解读</h3><p>${breachNote}</p>`;
+    : `展望期内模型未显示水位跌破枯水阈值，建议结合实测水位持续跟踪，不作为唯一决策依据。`;
+  document.getElementById('kaub-analyst').innerHTML = `<h3>分析师解读</h3><p>${breachNote}</p>${peakNote}`;
 }
 
 function sparklineSvg(vals) {
@@ -861,7 +875,8 @@ function renderSummary() {
             })()
           : k.first_low_water_breach
           ? `模型预测将于 <b>${esc(k.first_low_water_breach)}</b> 前后跌破枯水阈值，展望期内共 <b>${k.forecast_days_below_low_water}</b> 天低于关口——需关注驳船减载/运费上涨风险。`
-          : `展望期内模型未显示跌破枯水阈值（模型近期平均误差 ±${fmt1(k.model_mae_cm)}cm）。`}</li>
+          : `展望期内模型未显示跌破枯水阈值。`}</li>
+        ${k.near_term_peak ? `<li>未来两周预测峰值约 <b>${fmt0(k.near_term_peak.level_cm)}cm</b>（${esc(k.near_term_peak.date)}，25–75%区间 ${fmt0(k.near_term_peak.p25_cm)}–${fmt0(k.near_term_peak.p75_cm)}cm）。</li>` : ''}
       </ul>
     </div>`);
   }

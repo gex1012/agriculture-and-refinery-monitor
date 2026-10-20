@@ -64,27 +64,37 @@ def get_kaub_live_level(days=30):
     return data  # list of {"timestamp":..., "value": cm}
 
 
+def get_kaub_live_discharge(days=30):
+    """Discharge (m3/s) published by Pegelonline for Kaub. WSV derives it from the gauge level via
+    its current rating table, so (Q, W) pairs from here trace the rating actually in force today."""
+    return _cached_get(
+        f"https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/{KAUB_UUID}/Q/measurements.json",
+        {"start": f"P{days}D"},
+        ttl=1800,
+    )
+
+
+def get_kaub_official_forecast():
+    """BfG's official Kaub water-level forecast (~2 days 'forecast' + ~2 days 'estimate'),
+    list of {"initialized", "timestamp", "value" (cm), "type"}."""
+    return _cached_get(
+        f"https://www.pegelonline.wsv.de/webservices/rest-api/v2/stations/{KAUB_UUID}/WV/measurements.json",
+        ttl=1800,
+    )
+
+
 def get_kaub_discharge_forecast(forecast_days=210, past_days=60):
-    """GloFAS river discharge (m3/s) forecast up to ~7 months, plus per-day climatology (mean/p25/p75/min/max)."""
+    """GloFAS river discharge (m3/s) up to ~7 months ahead. The _median/_p25/_p75/_min/_max fields
+    are statistics across the forecast ENSEMBLE members, not climatology."""
     return _cached_get(
         "https://flood-api.open-meteo.com/v1/flood",
         {
             "latitude": KAUB_LAT, "longitude": KAUB_LON,
-            "daily": "river_discharge,river_discharge_mean,river_discharge_max,river_discharge_min,"
+            "daily": "river_discharge,river_discharge_median,river_discharge_max,river_discharge_min,"
                      "river_discharge_p25,river_discharge_p75",
             "forecast_days": forecast_days, "past_days": past_days,
         },
         ttl=3600 * 6,
-    )
-
-
-def get_kaub_discharge_archive(start_date, end_date):
-    """Historical daily discharge archive (GloFAS reanalysis), used to calibrate the discharge->level curve."""
-    return _cached_get(
-        "https://flood-api.open-meteo.com/v1/flood",
-        {"latitude": KAUB_LAT, "longitude": KAUB_LON, "daily": "river_discharge",
-         "start_date": start_date, "end_date": end_date},
-        ttl=3600 * 24,
     )
 
 

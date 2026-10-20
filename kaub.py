@@ -1,20 +1,24 @@
-"""Kaub (Rhine, km 546) water-level seasonal chart + outlook.
+"""Kaub (Rhine, km 546) water-level chart + outlook.
 
-Methodology:
-- Actual gauge level (cm), last ~30-45 days: live from Pegelonline (WSV), authoritative.
-- Beyond that window Pegelonline drops history, so for the seasonal chart and the forward outlook
-  we use Open-Meteo's Flood API (GloFAS hydrological reanalysis/forecast) river-discharge series
-  for the Rhine grid cell nearest Kaub, and convert discharge (m3/s) -> level (cm).
+Chain: GloFAS discharge forecast -> corrected to real Kaub discharge -> water level via the rating
+WSV currently uses -> first days replaced by BfG's official forecast.
 
-  This conversion used to be a power-law regression fitted against only the last ~45 days of
-  overlapping actual level/discharge data. That fit a narrow discharge band well (R^2~0.8) but
-  extrapolated absurdly outside it — e.g. winter high-flow forecast discharge produced modeled
-  levels over 10,000cm, since a power law has no ceiling. Fixed by switching to log-log
-  interpolation between Kaub's own OFFICIAL long-term characteristic values (Pegelonline's
-  `characteristicvalues`, cross-referenced with BfG's published discharge extremes for the same
-  station) — real recorded low/mean/high water pairs spanning the station's actual historical
-  range, clamped (not extrapolated) beyond it. This can't blow up: the y-axis is bounded by
-  Kaub's real recorded range (25cm-825cm) by construction.
+1. Rating (Q -> W). Pegelonline publishes Kaub discharge derived from the gauge level with WSV's
+   current rating table, so recent (Q, W) pairs trace today's rating exactly (linear fit error
+   ~0.04cm) — riverbed erosion included, which is why the old 2010-2020 characteristic-value
+   anchors ran 25-55cm too high at low water. Above the recently observed range: a power curve
+   W = c + b*Q^beta tangent to that exact segment and passing through the official mean-flow
+   anchor (MQ 1640 m3/s / MW 208cm); beta comes out ~0.5, the usual open-channel shape. Above MQ:
+   log-log interpolation between the official high-water anchors.
+2. Discharge forecast correction. GloFAS overstates Kaub discharge (~1.1-1.6x over the last month)
+   and overreacts to rain: in recent rises only ~1/4 of its increase showed up in real discharge.
+   Weather-driven horizon (<=15d): Q = Q_now + k*(G_t - G_today), k fitted on the last ~30 days.
+   Seasonal horizon (>=30d): Q = G_t / r, r = median GloFAS/actual ratio (event damping learned on
+   small low-flow events shouldn't be extrapolated to spring high-flow regimes). Linear blend between.
+3. Ensemble: main line uses the ensemble median, band uses p25-p75 — not the single deterministic
+   run, which sat above the ensemble p75 during the late-Oct-2026 rain event.
+4. BfG official forecast replaces the model for its ~4-day horizon; the gap at its last point
+   carries into the model and decays over a few days, so the outlook continues from it.
 """
 import datetime
 from collections import defaultdict
@@ -23,158 +27,211 @@ import numpy as np
 
 import data_sources as ds
 
-# Official Kaub characteristic values: discharge (m3/s) from BfG's published station statistics
-# (undine.bafg.de), water level (cm) from Pegelonline's station characteristicValues — paired by
-# statistical category (extreme-low/mean-low/mean/mean-high/extreme-high), not by matching dates
-# (the two sources' record years differ), which is standard practice for building a rating curve
-# from characteristic values rather than raw synchronous pairs.
 KAUB_OFFICIAL_ANCHORS_Q_W = [
-    (482, 25),     # NQ (lowest recorded discharge, 1947) / NNW (lowest recorded level, 2018)
-    (769, 65),     # MNQ (mean low-water discharge)        / MNW (mean low-water level, 2010-2020)
     (1640, 208),   # MQ  (mean discharge)                  / MW  (mean level, 2010-2020)
     (4260, 544),   # MHQ (mean flood discharge)            / MHW (mean high-water level, 2010-2020)
     (7160, 825),   # HQ  (highest recorded discharge, 1988)/ HHW (highest recorded level, 1883)
 ]
+SHORT_HORIZON_DAYS = 15
+SEASONAL_HORIZON_DAYS = 30
+ANCHOR_DECAY_DAYS = 5
+MIN_DISCHARGE = 250
+MIN_LEVEL_CM = -60
 
 
-def _daily_mean(pairs_list, key_field, val_field):
+def _daily_mean(points):
     buckets = defaultdict(list)
-    for item in pairs_list:
-        buckets[item[key_field][:10]].append(item[val_field])
+    for p in points:
+        buckets[p["timestamp"][:10]].append(p["value"])
     return {d: sum(v) / len(v) for d, v in buckets.items()}
 
 
-def _build_anchor_curve():
-    log_q = np.log([p[0] for p in KAUB_OFFICIAL_ANCHORS_Q_W])
-    log_w = np.log([p[1] for p in KAUB_OFFICIAL_ANCHORS_Q_W])
-    q_min, q_max = KAUB_OFFICIAL_ANCHORS_Q_W[0][0], KAUB_OFFICIAL_ANCHORS_Q_W[-1][0]
-    w_min, w_max = KAUB_OFFICIAL_ANCHORS_Q_W[0][1], KAUB_OFFICIAL_ANCHORS_Q_W[-1][1]
-
-    def curve(discharge):
-        if discharge <= q_min:
-            return float(w_min)
-        if discharge >= q_max:
-            return float(w_max)
-        return float(np.exp(np.interp(np.log(discharge), log_q, log_w)))
-
-    return curve
-
-
-MQ_DISCHARGE = 1640
-# How fast today's leftover gap between model and actual fades out of the forecast (days).
-TODAY_ANCHOR_DECAY_DAYS = 5
+def _solve_beta(q_hi, w_hi, slope, q_mq, w_mq):
+    """beta such that c + b*Q^beta matches (q_hi, w_hi) with slope `slope` and passes (q_mq, w_mq)."""
+    def gap(beta):
+        return slope * (q_mq ** beta - q_hi ** beta) / (beta * q_hi ** (beta - 1)) - (w_mq - w_hi)
+    lo, hi = 0.2, 1.0
+    if gap(lo) * gap(hi) > 0:
+        return None
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        if gap(lo) * gap(mid) <= 0:
+            hi = mid
+        else:
+            lo = mid
+    return (lo + hi) / 2
 
 
-def _calibrate_to_recent_actuals(official, pairs):
-    """The official anchors are 2010-2020 statistics; Kaub's riverbed has kept eroding since, and
-    GloFAS discharge carries its own bias, so at today's low flows the raw curve ran 25-55cm ABOVE
-    real gauge readings (Oct 2026: model ~42cm vs actual ~21cm). Fit W_actual = a + b*official(Q)
-    on the recent overlap and use that where we have observations. Above the highest recently
-    observed discharge the correction fades out (in log-Q) toward the official curve by mean flow
-    MQ, since recent low-flow data says nothing about how the high-flow end behaves."""
-    if len(pairs) < 8:
-        return official, None
-    x = np.array([official(q) for q, _ in pairs])
-    y = np.array([w for _, w in pairs])
-    if x.std() >= 5:
-        b, a = np.polyfit(x, y, 1)
-        b = float(np.clip(b, 0.2, 1.5))
-        a = float(np.mean(y - b * x))
+def _build_rating(pairs):
+    q = np.array([p[0] for p in pairs])
+    w = np.array([p[1] for p in pairs])
+    s, c = np.polyfit(q, w, 1)
+    q_lo, q_hi = float(q.min()), float(q.max())
+    w_hi = c + s * q_hi
+    mae = float(np.mean(np.abs(w - (c + s * q))))
+    q_mq, w_mq = KAUB_OFFICIAL_ANCHORS_Q_W[0]
+
+    beta = _solve_beta(q_hi, w_hi, s, q_mq, w_mq) if q_hi < q_mq and s > 0 else None
+    b = s / (beta * q_hi ** (beta - 1)) if beta else None
+
+    log_q = np.log([a[0] for a in KAUB_OFFICIAL_ANCHORS_Q_W])
+    log_w = np.log([a[1] for a in KAUB_OFFICIAL_ANCHORS_Q_W])
+
+    def rating(qv):
+        if qv <= q_hi:
+            return max(MIN_LEVEL_CM, float(c + s * qv))
+        if qv < q_mq:
+            if beta:
+                return float(w_hi + b * (qv ** beta - q_hi ** beta))
+            t = (np.log(qv) - np.log(q_hi)) / (np.log(q_mq) - np.log(q_hi))
+            return float(w_hi + t * (w_mq - w_hi))
+        if qv >= KAUB_OFFICIAL_ANCHORS_Q_W[-1][0]:
+            return float(KAUB_OFFICIAL_ANCHORS_Q_W[-1][1])
+        return float(np.exp(np.interp(np.log(qv), log_q, log_w)))
+
+    info = {"slope_cm_per_m3s": round(float(s), 4), "intercept_cm": round(float(c), 1),
+            "q_observed_min": round(q_lo), "q_observed_max": round(q_hi),
+            "beta": round(beta, 3) if beta else None, "fit_mae_cm": round(mae, 2), "n_days": len(pairs)}
+    return rating, info
+
+
+def _fit_glofas_correction(glofas_by_date, actual_q_by_date, today_str):
+    days = sorted(d for d in actual_q_by_date
+                  if d < today_str and glofas_by_date.get(d))
+    g = np.array([glofas_by_date[d] for d in days])
+    q = np.array([actual_q_by_date[d] for d in days])
+    k = float(np.clip(np.polyfit(g, q, 1)[0], 0.15, 1.0)) if len(days) >= 10 and g.std() > 10 else 0.5
+    r = float(np.median(g / q)) if len(days) else 1.0
+    return k, r, {"k": round(k, 3), "ratio": round(r, 3), "n_days": len(days),
+                  "corr": round(float(np.corrcoef(g, q)[0, 1]), 3) if len(days) >= 3 else None}
+
+
+def _corrected_discharge(g_t, g_today, q_now, lead, k, r):
+    short = q_now + k * (g_t - g_today)
+    seasonal = g_t / r
+    if lead <= SHORT_HORIZON_DAYS:
+        qv = short
+    elif lead >= SEASONAL_HORIZON_DAYS:
+        qv = seasonal
     else:
-        b, a = 1.0, float(np.mean(y - x))
-    q_hi = max(q for q, _ in pairs)
-
-    def correction(q):
-        c = a + (b - 1) * official(min(q, q_hi))
-        if q <= q_hi or q_hi >= MQ_DISCHARGE:
-            return c
-        t = (np.log(MQ_DISCHARGE) - np.log(q)) / (np.log(MQ_DISCHARGE) - np.log(q_hi))
-        return c * float(np.clip(t, 0, 1))
-
-    def calibrated(q):
-        return official(q) + correction(q)
-
-    mae_raw = float(np.mean(np.abs(x - y)))
-    mae_cal = float(np.mean(np.abs(np.array([calibrated(q) for q, _ in pairs]) - y)))
-    return calibrated, {"a": round(a, 2), "b": round(b, 3), "q_max_observed": round(q_hi, 1),
-                        "mae_official_cm": round(mae_raw, 1), "mae_calibrated_cm": round(mae_cal, 1),
-                        "n_days": len(pairs)}
-
-
-def _fit_rating_curve():
-    official = _build_anchor_curve()
-
-    live = ds.get_kaub_live_level(days=44)
-    daily_level = _daily_mean([{"d": p["timestamp"], "v": p["value"]} for p in live], "d", "v")
-    end = datetime.date.today()
-    start = end - datetime.timedelta(days=44)
-    disc = ds.get_kaub_discharge_archive(start.isoformat(), end.isoformat())
-    daily_disc = dict(zip(disc["daily"]["time"], disc["daily"]["river_discharge"]))
-
-    pairs = [(daily_disc[d], daily_level[d]) for d in sorted(daily_level)
-             if d in daily_disc and daily_disc[d] and daily_disc[d] > 0]
-    curve, calib = _calibrate_to_recent_actuals(official, pairs)
-    return curve, calib, daily_level
+        f = (lead - SHORT_HORIZON_DAYS) / (SEASONAL_HORIZON_DAYS - SHORT_HORIZON_DAYS)
+        qv = (1 - f) * short + f * seasonal
+    return max(MIN_DISCHARGE, qv)
 
 
 def build_seasonal_outlook():
-    curve, calib, daily_level_actual = _fit_rating_curve()
-    flood = ds.get_kaub_discharge_forecast(forecast_days=210, past_days=90)
-    daily = flood["daily"]
-    times = daily["time"]
     today = datetime.date.today()
     today_str = today.isoformat()
 
-    current_level = None
-    live = ds.get_kaub_live_level(days=3)
-    if live:
-        current_level = live[-1]["value"]
+    live_w = ds.get_kaub_live_level(days=31)
+    live_q = ds.get_kaub_live_discharge(days=31)
+    level_by_date = _daily_mean(live_w)
+    q_by_date = _daily_mean(live_q)
+    current_level = live_w[-1]["value"] if live_w else None
+    q_now = float(np.mean([p["value"] for p in live_q[-4:]])) if live_q else None
 
-    # Anchor the forecast to the latest real reading: whatever gap remains between the calibrated
-    # curve and the actual gauge on the most recent observed day is carried into the forecast and
-    # decays over a few days, so day 1 continues from the real level instead of jumping.
-    anchor_residual = 0.0
-    disc_by_date = dict(zip(times, daily["river_discharge"]))
-    observed_days = [d for d in sorted(daily_level_actual) if disc_by_date.get(d)]
-    if observed_days:
-        last_obs = observed_days[-1]
-        anchor_residual = daily_level_actual[last_obs] - curve(disc_by_date[last_obs])
+    pairs = [(q_by_date[d], level_by_date[d]) for d in sorted(level_by_date) if d in q_by_date]
+    rating, rating_info = _build_rating(pairs)
 
-    series = []
+    flood = ds.get_kaub_discharge_forecast(forecast_days=210, past_days=90)
+    daily = flood["daily"]
+    times = daily["time"]
+    col = {name: daily.get(name, [None] * len(times)) for name in
+           ["river_discharge", "river_discharge_median", "river_discharge_p25", "river_discharge_p75"]}
+    glofas_by_date = dict(zip(times, col["river_discharge"]))
+    k, r, glofas_info = _fit_glofas_correction(glofas_by_date, q_by_date, today_str)
+
+    try:
+        official = ds.get_kaub_official_forecast()
+    except Exception:
+        official = []
+    official_by_date = _daily_mean([p for p in official if p["timestamp"][:10] > today_str])
+    official_last_date = max(official_by_date) if official_by_date else None
+
+    i_today = times.index(today_str) if today_str in times else None
+    if q_now is None and today_str in q_by_date:
+        q_now = q_by_date[today_str]
+
+    def model_level(name, i, lead):
+        g_t, g0 = col[name][i], col[name][i_today]
+        if g_t is None or g0 is None or q_now is None:
+            return None, None
+        qv = _corrected_discharge(g_t, g0, q_now, lead, k, r)
+        return rating(qv), qv
+
+    rows = []
     for i, t in enumerate(times):
-        q = daily["river_discharge"][i]
-        if q is None:
+        if col["river_discharge"][i] is None:
             continue
         is_forecast = t > today_str
-        level = curve(q)
-        if is_forecast:
+        row = {
+            "date": t, "is_forecast": is_forecast,
+            "discharge": col["river_discharge"][i],
+            "discharge_median": col["river_discharge_median"][i],
+            "discharge_p25": col["river_discharge_p25"][i],
+            "discharge_p75": col["river_discharge_p75"][i],
+            "discharge_actual": round(q_by_date[t], 1) if t in q_by_date else None,
+            "level_actual_cm": round(level_by_date[t], 1) if t in level_by_date else None,
+            "level_official_forecast_cm": round(official_by_date[t], 1) if t in official_by_date else None,
+            "level_modeled_cm": None, "level_p25_cm": None, "level_p75_cm": None,
+            "discharge_corrected": None,
+        }
+        if is_forecast and i_today is not None:
             lead = (datetime.date.fromisoformat(t) - today).days
-            level += anchor_residual * np.exp(-lead / TODAY_ANCHOR_DECAY_DAYS)
-        series.append({
-            "date": t,
-            "is_forecast": is_forecast,
-            "discharge": q,
-            "discharge_p25": daily.get("river_discharge_p25", [None] * len(times))[i],
-            "discharge_p75": daily.get("river_discharge_p75", [None] * len(times))[i],
-            "discharge_min": daily.get("river_discharge_min", [None] * len(times))[i],
-            "discharge_max": daily.get("river_discharge_max", [None] * len(times))[i],
-            "discharge_mean_climatology": daily.get("river_discharge_mean", [None] * len(times))[i],
-            "level_modeled_cm": round(float(level), 1),
-            "level_actual_cm": round(daily_level_actual[t], 1) if t in daily_level_actual else None,
-        })
+            med, q_med = model_level("river_discharge_median", i, lead)
+            p25, _ = model_level("river_discharge_p25", i, lead)
+            p75, _ = model_level("river_discharge_p75", i, lead)
+            row.update(level_modeled_cm=med, level_p25_cm=p25, level_p75_cm=p75,
+                       discharge_corrected=round(q_med, 1) if q_med else None)
+        elif not is_forecast and row["level_actual_cm"] is None:
+            row["level_modeled_cm"] = rating(max(MIN_DISCHARGE, col["river_discharge"][i] / r))
+        rows.append(row)
 
-    below_low_water_dates = [r["date"] for r in series
-                              if r["is_forecast"] and r["level_modeled_cm"] <= ds.KAUB_LOW_WATER_CM]
+    # Splice in BfG's official forecast, then carry the gap at its last day into the model.
+    residual = 0.0
+    if official_last_date:
+        last_row = next((x for x in rows if x["date"] == official_last_date), None)
+        if last_row and last_row["level_modeled_cm"] is not None:
+            residual = official_by_date[official_last_date] - last_row["level_modeled_cm"]
+    for row in rows:
+        if not row["is_forecast"]:
+            continue
+        if row["level_official_forecast_cm"] is not None:
+            row["level_modeled_cm"] = row["level_official_forecast_cm"]
+            row["level_p25_cm"] = row["level_p75_cm"] = None
+            continue
+        if official_last_date:
+            lag = (datetime.date.fromisoformat(row["date"]) - datetime.date.fromisoformat(official_last_date)).days
+            shift = residual * np.exp(-lag / ANCHOR_DECAY_DAYS)
+        else:
+            shift = 0.0
+        for key in ("level_modeled_cm", "level_p25_cm", "level_p75_cm"):
+            if row[key] is not None:
+                row[key] += shift
 
-    mae = calib["mae_calibrated_cm"] if calib else None
+    for row in rows:
+        for key in ("level_modeled_cm", "level_p25_cm", "level_p75_cm"):
+            if row[key] is not None:
+                row[key] = round(float(row[key]), 1)
+
+    forecast = [x for x in rows if x["is_forecast"] and x["level_modeled_cm"] is not None]
+    below = [x["date"] for x in forecast if x["level_modeled_cm"] <= ds.KAUB_LOW_WATER_CM]
+    near = [x for x in forecast if (datetime.date.fromisoformat(x["date"]) - today).days <= SHORT_HORIZON_DAYS]
+    peak = max(near, key=lambda x: x["level_modeled_cm"]) if near else None
+
     return {
         "current_level_cm": current_level,
+        "current_discharge_m3s": round(q_now, 1) if q_now else None,
         "low_water_threshold_cm": ds.KAUB_LOW_WATER_CM,
-        "calibration": calib,
-        "model_mae_cm": mae,
-        "rating_curve_confidence": ("low" if mae is None else
-                                    "high" if mae <= 5 else "moderate" if mae <= 12 else "low"),
-        "series": series,
-        "forecast_days_below_low_water": len(below_low_water_dates),
-        "first_low_water_breach": below_low_water_dates[0] if below_low_water_dates else None,
+        "rating": rating_info,
+        "glofas_correction": glofas_info,
+        "official_forecast": {
+            "initialized": official[0]["initialized"] if official else None,
+            "until": official_last_date,
+        },
+        "near_term_peak": {"date": peak["date"], "level_cm": peak["level_modeled_cm"],
+                           "p25_cm": peak["level_p25_cm"], "p75_cm": peak["level_p75_cm"]} if peak else None,
+        "series": rows,
+        "forecast_days_below_low_water": len(below),
+        "first_low_water_breach": below[0] if below else None,
     }
