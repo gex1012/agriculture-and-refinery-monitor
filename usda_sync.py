@@ -63,7 +63,12 @@ def _find_latest_report_text():
     latest_text, latest_n = None, None
     for n in range(1, 53):
         fn = f"prog{n:02d}{year2}.txt"
-        r = requests.get(f"https://release.nass.usda.gov/reports/{fn}", timeout=20)
+        try:
+            r = requests.get(f"https://release.nass.usda.gov/reports/{fn}", timeout=20)
+        except requests.RequestException:
+            # A network failure mid-scan could hide the newest report, so don't trust a partial
+            # result — let sync() fall back to the cache instead.
+            return None, None
         if r.status_code == 200:
             latest_text, latest_n = r.text, n
     return latest_text, latest_n

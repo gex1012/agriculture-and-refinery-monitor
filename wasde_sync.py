@@ -122,16 +122,25 @@ def sync(force=False):
             with open(CACHE_FILE, encoding="utf-8") as f:
                 return json.load(f)
 
-    url, fname = _find_latest_xls()
-    if not url:
+    def cached_or_error(msg):
         if os.path.exists(CACHE_FILE):
             with open(CACHE_FILE, encoding="utf-8") as f:
                 return json.load(f)
-        return {"error": "WASDE report not found"}
+        return {"error": msg}
+
+    try:
+        url, fname = _find_latest_xls()
+    except requests.RequestException:
+        return cached_or_error("WASDE landing page unreachable and no cache available")
+    if not url:
+        return cached_or_error("WASDE report not found")
 
     tmp_path = os.path.join(CACHE_DIR, "_wasde_download.xls")
-    r = requests.get(url, timeout=30)
-    r.raise_for_status()
+    try:
+        r = requests.get(url, timeout=30)
+        r.raise_for_status()
+    except requests.RequestException:
+        return cached_or_error("WASDE report download failed and no cache available")
     with open(tmp_path, "wb") as f:
         f.write(r.content)
 
