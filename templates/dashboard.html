@@ -117,7 +117,7 @@
     <div class="kpi-row" id="kaub-kpis"></div>
     <div class="chart-wrap"><canvas id="kaubChart" height="90"></canvas></div>
     <div class="analyst" id="kaub-analyst"></div>
-    <div class="note">实际水位（近30-45天）：德国联邦水道局 Pegelonline 实时数据（官方，免 key）。季节气候带 + 未来展望（约6个月）：Open-Meteo Flood API（基于 GloFAS 水文模型再分析/预报），取 Kaub 附近莱茵河主河道格点的流量(m³/s)，再用近45天实测水位与流量的本地拟合曲线（幂函数, R² 见页面）换算为水位估算值 — 这是分析师近似换算，不是 WSV 官方水位表，仅用于判断趋势方向与关口（78cm 低水位阈值）。</div>
+    <div class="note">实际水位（近30-45天）：德国联邦水道局 Pegelonline 实时数据（官方，免 key）。季节气候带 + 未来展望（约6个月）：Open-Meteo Flood API（基于 GloFAS 水文模型再分析/预报），取 Kaub 附近莱茵河主河道格点的流量(m³/s)，先按 Kaub 官方特征值（WSV/BfG 的 NQ/MNQ/MQ/MHQ/HQ 与对应水位）做水位-流量换算，再用近30天实测水位对这条曲线做本地校准（河床下切+GloFAS 流量偏差会让官方曲线在低水位段系统性偏高 30cm 左右），预测起点锚定在最新实测水位、偏差在几天内逐步收敛。校准只覆盖近期实际出现过的流量区间，流量超出该区间后逐步回归官方曲线，因此大幅涨水段的预测不确定性更高。这是分析师近似换算，不是 WSV 官方预报，仅用于判断趋势方向与关口（78cm 低水位阈值）。</div>
   </section>
 
   <section class="page" id="page-agri">

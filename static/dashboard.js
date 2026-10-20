@@ -437,13 +437,15 @@ async function loadKaub() {
     <div class="kpi"><div class="n" style="color:${belowLow?'var(--red)':'var(--fg)'}">${fmt0(d.current_level_cm)} cm</div><div class="l">当前实测水位（Pegelonline）</div></div>
     <div class="kpi"><div class="n">${d.low_water_threshold_cm} cm</div><div class="l">枯水关口阈值</div></div>
     <div class="kpi"><div class="n">${d.forecast_days_below_low_water}</div><div class="l">未来展望期内预计低于关口的天数</div></div>
-    <div class="kpi"><div class="n">${(d.rating_curve_r2*100).toFixed(0)}%</div><div class="l">流量→水位换算拟合度 (R², ${d.rating_curve_confidence})</div></div>
+    <div class="kpi"><div class="n">±${fmt1(d.model_mae_cm)} cm</div><div class="l">模型近${d.calibration ? d.calibration.n_days : '—'}天平均误差（校准前 ±${d.calibration ? fmt1(d.calibration.mae_official_cm) : '—'} cm）</div></div>
   `;
 
   const labels = d.series.map(r => r.date);
   const actual = d.series.map(r => r.level_actual_cm);
   const modeled = d.series.map(r => r.level_modeled_cm);
   const threshold = d.series.map(() => d.low_water_threshold_cm);
+  const allLevels = [...actual, ...modeled].filter(v => v != null);
+  const yMin = Math.floor(Math.min(0, ...allLevels) / 10) * 10;
 
   const ctx = document.getElementById('kaubChart').getContext('2d');
   if (kaubChartInstance) kaubChartInstance.destroy();
@@ -462,15 +464,21 @@ async function loadKaub() {
       interaction: {mode: 'index', intersect: false},
       scales: {
         x: {ticks: {maxTicksLimit: 14, color: '#8b949e'}, grid: {color: '#30363d'}},
-        y: {title: {display: true, text: 'cm', color: '#8b949e'}, ticks: {color: '#8b949e'}, grid: {color: '#30363d'}},
+        y: {min: yMin, title: {display: true, text: 'cm', color: '#8b949e'}, ticks: {color: '#8b949e'}, grid: {color: '#30363d'}},
       },
       plugins: {legend: {labels: {color: '#e6edf3'}}},
     },
   });
 
-  const breachNote = d.first_low_water_breach
+  const forecast = d.series.filter(r => r.is_forecast);
+  const recovery = forecast.find(r => r.level_modeled_cm > d.low_water_threshold_cm);
+  const breachNote = belowLow
+    ? `当前实测水位 <b>${fmt0(d.current_level_cm)}cm</b>，<b>已低于</b> ${d.low_water_threshold_cm}cm 枯水关口，内河驳船已需减载运营。${recovery
+        ? `模型显示约 <b>${recovery.date}</b> 前后随来水增加首次回到关口以上（${fmt0(recovery.level_modeled_cm)}cm），但展望期内仍有 <b>${d.forecast_days_below_low_water}</b> 天处于关口以下，`
+        : `展望期内模型未显示回到关口以上，`}莱茵河沿岸炼厂/化工厂原料及产品运输成本面临持续上行压力（历史参考：2018年、2022年枯水导致驳船附加费大幅上涨）。`
+    : d.first_low_water_breach
     ? `模型显示水位预计将于 <b>${d.first_low_water_breach}</b> 前后跌破枯水阈值，展望期内共有 <b>${d.forecast_days_below_low_water}</b> 天低于该关口——若成真，内河驳船需减载运营，莱茵河沿岸炼厂/化工厂原料及产品运输成本可能上升（历史参考：2018年、2022年枯水导致驳船附加费大幅上涨）。`
-    : `展望期内模型未显示水位跌破枯水阈值，但换算拟合度为 ${d.rating_curve_confidence}（R²=${d.rating_curve_r2}），建议结合实测水位持续跟踪，不作为唯一决策依据。`;
+    : `展望期内模型未显示水位跌破枯水阈值（模型近期平均误差 ±${fmt1(d.model_mae_cm)}cm），建议结合实测水位持续跟踪，不作为唯一决策依据。`;
   document.getElementById('kaub-analyst').innerHTML = `<h3>分析师解读</h3><p>${breachNote}</p>`;
 }
 
@@ -844,9 +852,16 @@ function renderSummary() {
       <h3>🌊 Kaub 水位 <span class="goto" data-goto="kaub">查看详情 →</span></h3>
       <ul>
         <li>当前实测水位 <b class="${belowLow?'summary-flag':''}">${fmt0(k.current_level_cm)} cm</b>（枯水关口 ${k.low_water_threshold_cm} cm）${belowLow ? '，<b class="summary-flag">已跌破关口</b>' : ''}。</li>
-        <li>${k.first_low_water_breach
+        <li>${belowLow
+          ? (() => {
+              const rec = k.series.find(r => r.is_forecast && r.level_modeled_cm > k.low_water_threshold_cm);
+              return rec
+                ? `模型显示约 <b>${esc(rec.date)}</b> 前后回到关口以上，但展望期内仍有 <b>${k.forecast_days_below_low_water}</b> 天低于关口——驳船减载/运费上涨风险持续。`
+                : `展望期内模型未显示回到关口以上——驳船减载/运费上涨风险持续。`;
+            })()
+          : k.first_low_water_breach
           ? `模型预测将于 <b>${esc(k.first_low_water_breach)}</b> 前后跌破枯水阈值，展望期内共 <b>${k.forecast_days_below_low_water}</b> 天低于关口——需关注驳船减载/运费上涨风险。`
-          : `展望期内模型未显示跌破枯水阈值（换算拟合度 ${k.rating_curve_confidence}）。`}</li>
+          : `展望期内模型未显示跌破枯水阈值（模型近期平均误差 ±${fmt1(k.model_mae_cm)}cm）。`}</li>
       </ul>
     </div>`);
   }
